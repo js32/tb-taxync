@@ -178,9 +178,9 @@ async function loadSettings() {
   const defaults = {
     syncFilePath: '/home/jens/Sync/thunderbird-tags.json',
     autoSync: true,
-    syncOnChange: false,
+    syncOnChange: true,
     manualSync: true,
-    syncService: 'syncthing'
+    syncInterval: 5
   };
 
   const settings = await browser.storage.local.get(defaults);
@@ -190,19 +190,20 @@ async function loadSettings() {
   document.getElementById('syncOnChange').checked = settings.syncOnChange;
   document.getElementById('manualSync').checked = settings.manualSync;
 
-  const serviceRadio = document.getElementById(`syncService${capitalize(settings.syncService)}`);
-  if (serviceRadio) {
-    serviceRadio.checked = true;
-  }
+  // Convert milliseconds back to minutes for display
+  const syncIntervalMinutes = settings.syncInterval ? Math.round(settings.syncInterval / (60 * 1000)) : 5;
+  document.getElementById('syncInterval').value = syncIntervalMinutes;
 }
 
 async function saveSettings() {
+  const syncInterval = parseInt(document.getElementById('syncInterval').value) || 5;
+
   const settings = {
     syncFilePath: document.getElementById('syncFilePath').value.trim(),
     autoSync: document.getElementById('autoSync').checked,
     syncOnChange: document.getElementById('syncOnChange').checked,
     manualSync: document.getElementById('manualSync').checked,
-    syncService: document.querySelector('input[name="syncService"]:checked').value
+    syncInterval: syncInterval * 60 * 1000 // Convert minutes to milliseconds
   };
 
   try {

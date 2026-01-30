@@ -299,7 +299,7 @@
       </label>
 
       <label class="checkbox-label">
-        <input type="checkbox" id="syncOnChange">
+        <input type="checkbox" id="syncOnChange" checked>
         Bei Änderungen synchronisieren
       </label>
 
@@ -311,23 +311,12 @@
   </div>
 
   <div class="section">
-    <h2>Sync-Service</h2>
+    <h2>Synchronisierungs-Intervall</h2>
 
     <div class="form-group">
-      <label class="checkbox-label">
-        <input type="radio" name="syncService" value="syncthing" id="syncServiceSyncthing" checked>
-        Syncthing
-      </label>
-
-      <label class="checkbox-label">
-        <input type="radio" name="syncService" value="smb" id="syncServiceSmb">
-        SMB-Freigabe
-      </label>
-
-      <label class="checkbox-label">
-        <input type="radio" name="syncService" value="manual" id="syncServiceManual">
-        Manuell (eigener Pfad)
-      </label>
+      <label for="syncInterval">Automatisch synchronisieren alle (Minuten):</label>
+      <input type="number" id="syncInterval" min="1" max="1440" value="5" placeholder="5">
+      <div class="hint">Zeit in Minuten zwischen automatischen Syncs. 0 = deaktiviert.</div>
     </div>
   </div>
 
