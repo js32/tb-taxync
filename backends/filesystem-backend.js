@@ -23,7 +23,8 @@ class FilesystemBackend {
 
       // Check if fileIO experiment API is available
       if (typeof browser === 'undefined' || typeof browser.fileIO === 'undefined') {
-        console.error('[Filesystem] fileIO experiment API not available');
+        console.warn('[Filesystem] fileIO experiment API not available - filesystem backend cannot be used');
+        console.warn('[Filesystem] Please ensure Thunderbird has experimental APIs enabled and ExtensionCommon is available');
         return false;
       }
 

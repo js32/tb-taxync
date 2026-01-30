@@ -155,6 +155,8 @@ async function initializeSyncEngine() {
 
     // Create appropriate backend adapter
     let backend;
+    let requestedType = backendConfig.type;
+
     switch (backendConfig.type) {
       case 'storage':
         if (typeof StorageBackend !== 'undefined') {
@@ -184,8 +186,20 @@ async function initializeSyncEngine() {
     // Test backend connection
     const connected = await backend.testConnection();
     if (!connected) {
-      console.warn('[Background] Backend connection test failed');
-      return;
+      console.warn(`[Background] Backend connection test failed for type: ${requestedType}`);
+
+      // Fallback to StorageBackend if filesystem fails
+      if (requestedType === 'filesystem' && typeof StorageBackend !== 'undefined') {
+        console.warn('[Background] Falling back to StorageBackend (filesystem not available)');
+        backend = new StorageBackend({});
+        const storageConnected = await backend.testConnection();
+        if (!storageConnected) {
+          console.error('[Background] Even StorageBackend failed');
+          return;
+        }
+      } else {
+        return;
+      }
     }
 
     // Initialize tag manager and sync engine
