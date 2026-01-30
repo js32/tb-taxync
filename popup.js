@@ -21,8 +21,16 @@ function setupEventListeners() {
 
   const logsButton = document.getElementById('logsButton');
   if (logsButton) {
-    logsButton.addEventListener('click', () => {
-      window.open('logs.html');
+    logsButton.addEventListener('click', async () => {
+      try {
+        // Try to open logs.html via extension URL
+        const logsUrl = browser.runtime.getURL('logs.html');
+        window.open(logsUrl, 'logs', 'width=1000,height=700,menubar=no,toolbar=no');
+      } catch (error) {
+        console.error('Failed to open logs:', error);
+        // Fallback: show alert
+        alert('Logs viewer: Please check the Logs section in Settings');
+      }
     });
   }
 }
