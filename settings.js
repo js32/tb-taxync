@@ -14,13 +14,103 @@ const statusMessage = document.getElementById('statusMessage');
 
 // Load settings on page load
 document.addEventListener('DOMContentLoaded', async () => {
+  setupTabNavigation();
   await loadSettings();
   setupEventListeners();
 
   // Setup logs buttons
   document.getElementById('refreshLogsBtn')?.addEventListener('click', loadLogs);
   document.getElementById('clearLogsBtn')?.addEventListener('click', clearAllLogs);
+
+  // Check if we should show logs tab from URL parameter
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('tab') === 'logs') {
+    switchTab('logs');
+  }
 });
+
+/**
+ * Setup tab navigation
+ */
+function setupTabNavigation() {
+  // Add tab buttons to settings page
+  const heading = document.querySelector('h1');
+  if (heading) {
+    const tabContainer = document.createElement('div');
+    tabContainer.id = 'tabContainer';
+    tabContainer.innerHTML = `
+      <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #ddd;">
+        <button class="tab-button active" data-tab="settings">⚙️ Settings</button>
+        <button class="tab-button" data-tab="logs">📋 Logs</button>
+      </div>
+    `;
+    heading.parentNode.insertBefore(tabContainer, heading.nextSibling);
+
+    // Add tab button styling
+    const style = document.createElement('style');
+    style.textContent = `
+      .tab-button {
+        padding: 10px 15px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        color: #666;
+        border-bottom: 3px solid transparent;
+        margin-bottom: -2px;
+        transition: all 0.3s;
+      }
+      .tab-button.active {
+        color: #0078d4;
+        border-bottom-color: #0078d4;
+      }
+      .tab-button:hover {
+        color: #0078d4;
+      }
+      .tab-content {
+        display: none;
+      }
+      .tab-content.active {
+        display: block;
+      }
+    `;
+    document.head.appendChild(style);
+
+    // Add click handlers
+    document.querySelectorAll('.tab-button').forEach(btn => {
+      btn.addEventListener('click', (e) => switchTab(e.target.dataset.tab));
+    });
+  }
+}
+
+/**
+ * Switch between tabs
+ */
+function switchTab(tabName) {
+  // Hide all tab contents
+  document.querySelectorAll('.section').forEach(section => {
+    section.style.display = tabName === 'settings' ? 'block' : 'none';
+  });
+  document.querySelector('.button-group').style.display = tabName === 'settings' ? 'flex' : 'none';
+
+  // Show logs section
+  const logsSection = Array.from(document.querySelectorAll('.section')).find(s =>
+    s.querySelector('h2')?.textContent.includes('Logs')
+  );
+  if (logsSection) {
+    logsSection.style.display = tabName === 'logs' ? 'block' : 'none';
+  }
+
+  // Update tab buttons
+  document.querySelectorAll('.tab-button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tabName);
+  });
+
+  // Load logs if switching to logs tab
+  if (tabName === 'logs') {
+    loadLogs();
+  }
+}
 
 /**
  * Load current settings from storage

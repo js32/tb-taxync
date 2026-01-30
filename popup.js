@@ -23,13 +23,12 @@ function setupEventListeners() {
   if (logsButton) {
     logsButton.addEventListener('click', async () => {
       try {
-        // Try to open logs.html via extension URL
-        const logsUrl = browser.runtime.getURL('logs.html');
-        window.open(logsUrl, 'logs', 'width=1000,height=700,menubar=no,toolbar=no');
+        // Open settings page with logs tab parameter
+        const settingsUrl = browser.runtime.getURL('settings.html?tab=logs');
+        window.open(settingsUrl, 'settings', 'width=700,height=800');
       } catch (error) {
-        console.error('Failed to open logs:', error);
-        // Fallback: show alert
-        alert('Logs viewer: Please check the Logs section in Settings');
+        console.error('Failed to open settings:', error);
+        browser.runtime.openOptionsPage?.();
       }
     });
   }
