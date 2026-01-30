@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "TB Labels Sync",
+  "name": "TB-TaXync",
   "version": "2.0.0",
   "description": "Sync Thunderbird tags/keywords across multiple installations via Syncthing or SMB",
   "author": "Your Name",

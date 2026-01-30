@@ -1,138 +1,136 @@
-# Thunderbird Sync Labels Extension
+# TB-TaXync
 
-A modern Thunderbird extension for synchronizing tag/keyword definitions across multiple Thunderbird installations via Syncthing or SMB/NFS shares.
+Eine Thunderbird WebExtension zum Synchronisieren von E-Mail-Tags/Beschriftungen zwischen mehreren Computern und Thunderbird-Installationen.
 
-## Features
+![Version](https://img.shields.io/badge/version-2.0.0-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Thunderbird](https://img.shields.io/badge/Thunderbird-128%2B-orange)
 
-- ✅ **Zero Configuration**: Install → Done. No setup required!
-- ✅ **Auto-Discovery**: Automatically finds Syncthing/SMB on first run
-- ✅ **Smart Fallback**: Uses home directory if no sync folder found
-- ✅ **One-Click Sync**: Just click "Sync Now" button
-- ✅ **Auto-Sync**: Enabled by default (1 hour interval)
-- ✅ **Full Tag Management**: Creates, updates, and syncs tags automatically
-- ✅ **Modern APIs**: Uses Thunderbird 128+ IOUtils + messages.tags API
-- ✅ **Manifest v3**: Future-proof
-- ✅ **Conflict Resolution**: "Newer wins" strategy
-- ✅ **Bidirectional**: Changes on any machine sync to all others
+## 🎯 Was macht TB-TaXync?
 
-## Requirements
+TB-TaXync synchronisiert deine Thunderbird-Tags (Beschriftungen/Keywords) zwischen mehreren Computern. So haben alle deine E-Mail-Tags überall den gleichen Stand:
 
-- **Thunderbird 128.0 ESR or higher** (required for Manifest v3)
-- Syncthing or SMB/NFS mount (for file sharing)
+- 📤 **Exportiert** deine Tags in eine JSON-Datei
+- 💾 **Speichert** die Datei an einem zentralen Ort (lokal, SMB, Cloud, etc.)
+- 📥 **Importiert** die Tags auf anderen Computern automatisch
 
-## Project Structure
+## ✨ Features
+
+- ✅ **Manuelle & Automatische Synchronisierung**: Wähle zwischen manuell oder zeitgesteuert
+- ✅ **Echtzeit-Sync**: Optional bei jeder Tag-Änderung synchronisieren
+- ✅ **Flexible Sync-Tools**: Syncthing (⭐ empfohlen), Dropbox, SMB, NFS, SSH/SFTP
+- ✅ **Deutsche Benutzeroberfläche**: Vollständig auf Deutsch
+- ✅ **Debug-Logs**: Detaillierte Logs mit Fehlerbehandlung
+- ✅ **Fallback-Support**: Nutzt Browser-Storage wenn Dateisystem nicht verfügbar
+- ✅ **Moderne APIs**: Thunderbird 128+ Manifest v3
+- ✅ **Konfliktauflösung**: "Neuere wins" Strategie
+
+## 📋 Anforderungen
+
+- **Thunderbird 128.0 ESR oder höher** (erforderlich für Manifest v3)
+- Syncthing, Dropbox, SMB/NFS oder anderes Sync-Tool (optional aber empfohlen)
+
+## 🚀 Schnellstart
+
+### Installation
+
+- Thunderbird 128+ erforderlich
+- XPI-Datei laden: `thunderbird-sync-labels.xpi`
+- `Tools` → `Add-ons and Themes` → Zahnrad-Icon ⚙️ → `Debug Add-ons`
+- `Load Temporary Add-on` → `manifest.json` auswählen
+
+### Konfiguration
+
+1. Extension-Icon klicken → "Einstellungen öffnen"
+2. Tab "📖 Übersicht" lesen
+3. Tab "⚙️ Einstellungen":
+   - Pfad zur Sync-Datei eingeben (z.B. `~/Sync/thunderbird-tags.json`)
+   - Optional: Automatische Synchronisierung aktivieren
+   - Optional: "Bei Änderungen synchronisieren" aktivieren
+4. "Einstellungen speichern" klicken
+
+### Erste Synchronisierung
+
+- Klick "Sync testen" um Konfiguration zu prüfen
+- Klick im Popup "Jetzt synchronisieren"
+- Logs im Tab "📋 Logs" überprüfen
+
+## 🔧 Sync-Tools (empfohlen nach Reihenfolge)
+
+| Tool | Beschreibung | Setup |
+|------|-------------|-------|
+| **⭐ Syncthing** | Dezentral, privat, keine Server | einfach |
+| Dropbox / Google Drive | Cloud-basiert | sehr einfach |
+| SMB / NAS | Netzwerk-Freigaben | mittel |
+| NFS | Linux Netzwerk-FS | mittel |
+| SSH/SFTP | Server-Zugriff | komplex |
+
+## 🏗️ Projektstruktur
 
 ```
-thunderbird-sync-labels/
-├── manifest.json              # Manifest v3 configuration
-├── background.js              # Background service
-├── popup.html/js              # Quick access UI
-├── settings.html/js           # Configuration UI
-├── logs.html/js              # Debug console
+tb-taxync/
+├── manifest.json              # Manifest v3 Konfiguration
+├── background.js              # Hintergrund-Service
+├── popup.html/js              # Schnell-Sync UI
+├── settings.html/js           # Konfiguration & Logs
 ├── backends/
-│   ├── backend-adapter.js     # Abstract backend
-│   └── filesystem-backend.js  # IOUtils-based filesystem backend
+│   ├── filesystem-backend.js  # Datei-Speicher
+│   └── storage-backend.js     # Browser-Storage Fallback
 ├── sync/
-│   ├── path-discovery.js      # Auto-detect sync paths
-│   ├── tag-manager.js         # Thunderbird tag interface
-│   ├── sync-engine.js         # Sync orchestration
-│   └── error-handler.js       # Logging & errors
-└── icons/                     # Extension icons
+│   ├── sync-engine.js         # Sync-Logik
+│   ├── tag-manager.js         # Thunderbird-Integration
+│   ├── error-handler.js       # Logging & Fehlerbehandlung
+│   └── path-discovery.js      # Pfad-Erkennung
+└── icons/                     # Extension-Icons
 ```
 
-## Quick Start
+## 💻 Entwicklung
 
-### Prerequisites
+### Dateien ändern und testen
 
-- Thunderbird 128.0 ESR or higher
-- Syncthing installed OR SMB/NFS share mounted
+```bash
+# 1. Datei bearbeiten (z.B. settings.html)
+# 2. XPI bauen
+zip -r thunderbird-sync-labels.xpi \
+  manifest.json background.js popup.html popup.js \
+  settings.html settings.js logs.html logs.js \
+  backends/*.js sync/*.js icons/*.png
 
-### Installation & Usage
+# 3. In Thunderbird neu laden
+# Tools → Developer Tools → Browser Console
+```
 
-**That's it. Literally.**
+### Debug-Tipps
 
-1. Download `thunderbird-sync-labels.xpi`
-2. Drag & drop into Thunderbird
-3. Click "Install"
-4. **Done!**
+1. **Browser Console öffnen**: `Tools` → `Developer Tools` → `Browser Console` (Ctrl+Shift+J)
+2. **Filter nach Logs**: Suche nach `[Filesystem]`, `[SyncEngine]`, `[TagManager]`
+3. **Extension-Logs**: Tab "📋 Logs" in den Einstellungen öffnen
 
-Extension auto-configures on install:
-- Finds Syncthing folder if available
-- Falls back to `~/.thunderbird-tags.json` if not
-- Enables auto-sync (1 hour)
+## 📚 Ressourcen
 
-### Using It
+- [Thunderbird WebExtension API](https://webextension-api.thunderbird.net/)
+- [Mozilla WebExtensions Docs](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions)
+- [Syncthing](https://syncthing.net/)
 
-**To sync manually:**
-- Click extension icon
-- Click "🔄 Sync Now"
+## 🐛 Bekannte Limitationen
 
-**That's all you need!**
+- Keine direkte Tag-Erstellung via WebExtension API (nur Import/Export)
+- Konfliktauflösung: "Neuere wins" (kein 3-Way-Merge)
+- Benötigt Experiment APIs in Thunderbird 128+
 
-### Advanced (Optional)
+## 🤝 Beitragen
 
-If you want to customize:
-- Click extension icon
-- Expand "⚙️ Advanced"
-- Click "Settings" to change sync path
-- Click "Logs" to debug
+Contributions willkommen!
 
-### For Multiple Machines
+1. Fork & Clone
+2. Feature-Branch: `git checkout -b feature/xyz`
+3. Commit: `git commit -m "Add feature xyz"`
+4. Push & Pull Request erstellen
 
-**On each machine:**
-1. Install extension (same steps)
-2. If using Syncthing: Ensure folder is synced between machines
-3. Extension finds the same sync file automatically
-4. Tags sync between all machines
+## 📄 Lizenz
 
-**Example with Syncthing:**
-- Machine A: Installs → finds `/home/user/Syncthing/thunderbird-tags.json`
-- Machine B: Installs → finds `/home/user/Syncthing/thunderbird-tags.json`
-- Same file → Tags synced! ✅
+MIT License - siehe [LICENSE](LICENSE)
 
-## Features
+## 👤 Autor
 
-- **Background Script**: Monitors mail events and handles extension lifecycle
-- **Popup Interface**: Provides UI for controlling sync settings
-- **Storage**: Persists sync settings and status
-- **Permissions**: Configured for message and account access
-
-## Development
-
-### Key Files
-
-- **manifest.json**: Extension metadata and permissions
-- **background.js**: Background processes and event listeners
-- **popup.html/popup.js**: User interface and interaction logic
-
-### Available Permissions
-
-- `messagesRead`: Read email messages
-- `accountsRead`: Access email accounts
-- `storage`: Store extension data locally
-
-### Next Steps
-
-1. Implement label synchronization logic in `background.js`
-2. Add proper error handling
-3. Create settings page for advanced configuration
-4. Add icons to the `icons/` directory
-5. Implement actual sync mechanism between accounts
-
-## Debugging
-
-- Check the Browser Console for background script logs: `Tools` → `Developer Tools` → `Browser Console` (Ctrl+Shift+J)
-- Inspect the popup: Right-click on the extension icon and select `Inspect`
-
-## Resources
-
-- [Thunderbird WebExtension APIs](https://webextension-api.thunderbird.net/)
-- [Mozilla WebExtensions Documentation](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions)
-
-## License
-
-[Add your license here]
-
-## Author
-
-[Your Name]
+Entwickelt mit Claude Code
