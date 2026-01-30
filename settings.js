@@ -2,6 +2,8 @@
 
 document.addEventListener('DOMContentLoaded', async () => {
   await loadSettings();
+  setupTabs();
+  setupLogHandlers();
 
   // Save button handler
   document.getElementById('saveBtn').addEventListener('click', saveSettings);
@@ -17,6 +19,160 @@ document.addEventListener('DOMContentLoaded', async () => {
     showMessage('Hinweis: Die Dateiauswahl ist derzeit nur manuell über Texteingabe möglich.', 'error');
   });
 });
+
+/**
+ * Setup tab navigation
+ */
+function setupTabs() {
+  const tabButtons = document.querySelectorAll('.tab-button');
+  const tabContents = document.querySelectorAll('.tab-content');
+
+  tabButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const tabName = button.getAttribute('data-tab');
+
+      // Remove active class from all buttons and contents
+      tabButtons.forEach(btn => btn.classList.remove('active'));
+      tabContents.forEach(content => content.classList.remove('active'));
+
+      // Add active class to clicked button and corresponding content
+      button.classList.add('active');
+      document.getElementById(`${tabName}-tab`).classList.add('active');
+
+      // Load logs when switching to logs tab
+      if (tabName === 'logs') {
+        loadAndDisplayLogs();
+      }
+    });
+  });
+}
+
+/**
+ * Setup log handlers
+ */
+function setupLogHandlers() {
+  const refreshLogsBtn = document.getElementById('refreshLogsBtn');
+  const downloadLogsBtn = document.getElementById('downloadLogsBtn');
+  const clearLogsBtn = document.getElementById('clearLogsBtn');
+
+  if (refreshLogsBtn) {
+    refreshLogsBtn.addEventListener('click', loadAndDisplayLogs);
+  }
+
+  if (downloadLogsBtn) {
+    downloadLogsBtn.addEventListener('click', downloadLogs);
+  }
+
+  if (clearLogsBtn) {
+    clearLogsBtn.addEventListener('click', clearLogs);
+  }
+}
+
+/**
+ * Load and display logs from error handler
+ */
+async function loadAndDisplayLogs() {
+  try {
+    const response = await browser.runtime.sendMessage({ action: 'getLogs' });
+
+    if (response.success && response.logs) {
+      const logs = response.logs;
+      const logContainer = document.getElementById('logContainer');
+
+      if (logs.length === 0) {
+        logContainer.innerHTML = '<div class="empty-state">Keine Logs vorhanden. Führe einen Sync durch, um Logs zu generieren.</div>';
+        updateLogStats(logs);
+        return;
+      }
+
+      // Display logs
+      logContainer.innerHTML = '';
+      logs.forEach(log => {
+        const entry = document.createElement('div');
+        entry.className = `log-entry ${log.level || 'INFO'}`;
+
+        const timestamp = new Date(log.timestamp).toLocaleString('de-DE');
+        entry.innerHTML = `<span class="log-timestamp">${timestamp}</span><span class="log-level">${log.level || 'INFO'}</span><span class="log-message">${escapeHtml(log.message)}</span>`;
+
+        logContainer.appendChild(entry);
+      });
+
+      updateLogStats(logs);
+    }
+  } catch (error) {
+    console.error('Error loading logs:', error);
+  }
+}
+
+/**
+ * Update log statistics
+ */
+function updateLogStats(logs) {
+  const totalLogs = logs.length;
+  const errorCount = logs.filter(l => l.level === 'ERROR').length;
+  const warningCount = logs.filter(l => l.level === 'WARN').length;
+
+  document.getElementById('totalLogs').textContent = totalLogs;
+  document.getElementById('errorCount').textContent = errorCount;
+  document.getElementById('warningCount').textContent = warningCount;
+
+  // Get last sync time from logs
+  const lastSyncLog = logs.find(l => l.message.includes('sync complete') || l.message.includes('Sync complete'));
+  if (lastSyncLog) {
+    const date = new Date(lastSyncLog.timestamp);
+    document.getElementById('lastSync').textContent = date.toLocaleString('de-DE');
+  }
+}
+
+/**
+ * Download logs as JSON
+ */
+async function downloadLogs() {
+  try {
+    const response = await browser.runtime.sendMessage({ action: 'getLogs' });
+
+    if (response.success && response.logs) {
+      const logsJson = JSON.stringify(response.logs, null, 2);
+      const blob = new Blob([logsJson], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `tb-labels-sync-logs-${new Date().toISOString()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  } catch (error) {
+    console.error('Error downloading logs:', error);
+    showMessage('Fehler beim Download der Logs', 'error');
+  }
+}
+
+/**
+ * Clear all logs
+ */
+async function clearLogs() {
+  if (!confirm('Möchtest du alle Logs löschen?')) {
+    return;
+  }
+
+  try {
+    await browser.runtime.sendMessage({ action: 'clearLogs' });
+    showMessage('Logs gelöscht', 'success');
+    loadAndDisplayLogs();
+  } catch (error) {
+    console.error('Error clearing logs:', error);
+    showMessage('Fehler beim Löschen der Logs', 'error');
+  }
+}
+
+/**
+ * Escape HTML to prevent XSS
+ */
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
 
 async function loadSettings() {
   const defaults = {
