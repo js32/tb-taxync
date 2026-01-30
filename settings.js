@@ -16,6 +16,10 @@ const statusMessage = document.getElementById('statusMessage');
 document.addEventListener('DOMContentLoaded', async () => {
   await loadSettings();
   setupEventListeners();
+
+  // Setup logs buttons
+  document.getElementById('refreshLogsBtn')?.addEventListener('click', loadLogs);
+  document.getElementById('clearLogsBtn')?.addEventListener('click', clearAllLogs);
 });
 
 /**
@@ -207,5 +211,58 @@ function closeSettings() {
   } else {
     // Otherwise navigate back to home or previous page
     window.location.href = 'popup.html';
+  }
+}
+
+/**
+ * Load and display logs
+ */
+async function loadLogs() {
+  try {
+    const response = await browser.runtime.sendMessage({
+      action: 'getLogs'
+    });
+
+    const logsContainer = document.getElementById('logsContainer');
+    const logsList = document.getElementById('logsList');
+
+    if (response && response.logs && response.logs.length > 0) {
+      logsContainer.style.display = 'block';
+      logsList.innerHTML = response.logs
+        .slice(-50) // Show last 50 logs
+        .map(log => `<div style="margin-bottom: 8px; padding: 5px; border-left: 3px solid #666;">
+          <span style="color: #858585;">[${new Date(log.timestamp).toLocaleString()}]</span>
+          <span style="color: #4ec9b0;">[${log.level}]</span>
+          <span>${log.message}</span>
+        </div>`)
+        .join('');
+    } else {
+      logsContainer.style.display = 'block';
+      logsList.innerHTML = '<div style="color: #858585; text-align: center; padding: 20px;">No logs yet</div>';
+    }
+  } catch (error) {
+    console.error('Failed to load logs:', error);
+    document.getElementById('logsContainer').style.display = 'block';
+    document.getElementById('logsList').innerHTML = `<div style="color: #f48771;">Error loading logs: ${error.message}</div>`;
+  }
+}
+
+/**
+ * Clear all logs
+ */
+async function clearAllLogs() {
+  if (!confirm('Clear all logs?')) {
+    return;
+  }
+
+  try {
+    await browser.runtime.sendMessage({
+      action: 'clearLogs'
+    });
+
+    document.getElementById('logsList').innerHTML = '<div style="color: #858585; text-align: center; padding: 20px;">Logs cleared</div>';
+  } catch (error) {
+    console.error('Failed to clear logs:', error);
+    document.getElementById('logsList').innerHTML = `<div style="color: #f48771;">Error clearing logs: ${error.message}</div>`;
   }
 }
