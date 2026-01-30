@@ -257,6 +257,31 @@
       color: #999;
       padding: 40px 20px;
     }
+
+    /* Welcome tab specific styles */
+    #welcome-tab h3 {
+      color: #0060df;
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    #welcome-tab p {
+      color: #333;
+    }
+
+    #welcome-tab ol, #welcome-tab ul {
+      color: #333;
+    }
+
+    #welcome-tab li {
+      margin-bottom: 8px;
+    }
+
+    #welcome-tab code {
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 12px;
+    }
   </style>
 </head>
 <body>
@@ -264,12 +289,60 @@
 
   <!-- Tab Navigation -->
   <div class="tabs">
-    <button class="tab-button active" data-tab="settings">⚙️ Einstellungen</button>
+    <button class="tab-button active" data-tab="welcome">📖 Übersicht</button>
+    <button class="tab-button" data-tab="settings">⚙️ Einstellungen</button>
     <button class="tab-button" data-tab="logs">📋 Logs</button>
   </div>
 
+  <!-- Welcome Tab -->
+  <div id="welcome-tab" class="tab-content active">
+    <h2>Willkommen zu TB Labels Sync</h2>
+
+    <div class="section">
+      <h3>Was macht diese Extension?</h3>
+      <p style="line-height: 1.6; margin-bottom: 15px;">
+        <strong>TB Labels Sync</strong> synchronisiert deine Thunderbird-Beschriftungen (Tags/Keywords)
+        zwischen mehreren Computern und Thunderbird-Installationen. So haben alle deine
+        E-Mail-Tags überall den gleichen Stand.
+      </p>
+
+      <h3 style="margin-top: 20px;">Wie funktioniert es?</h3>
+      <ol style="line-height: 1.8; margin-bottom: 15px; margin-left: 20px;">
+        <li><strong>Export:</strong> Deine Tags werden in eine JSON-Datei exportiert</li>
+        <li><strong>Speichern:</strong> Die Datei wird an einem zentralen Ort gespeichert</li>
+        <li><strong>Sync:</strong> Andere Computer laden die Tags von dort und importieren sie</li>
+      </ol>
+
+      <h3 style="margin-top: 20px;">Sync-Tools</h3>
+      <p style="margin-bottom: 10px;">
+        Du kannst verschiedene Synchronisierungs-Lösungen verwenden, um die Datei zwischen
+        Rechnern zu synchronisieren:
+      </p>
+      <ul style="line-height: 1.8; margin-left: 20px;">
+        <li><strong>Syncthing</strong> - Dezentraler Dateisync zwischen Geräten</li>
+        <li><strong>Dropbox / Google Drive / OneDrive</strong> - Cloud-Speicher</li>
+        <li><strong>SMB-Freigabe</strong> - Netzwerk-Freigaben (NAS, Windows-Freigaben)</li>
+        <li><strong>NFS</strong> - Netzwerk-Dateisystem (Linux)</li>
+        <li><strong>SSH/SFTP</strong> - Fernzugriff auf Server</li>
+      </ul>
+
+      <h3 style="margin-top: 20px;">Erste Schritte</h3>
+      <ol style="line-height: 1.8; margin-left: 20px;">
+        <li>Wähle einen Speicherort für die Sync-Datei (z.B. <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px;">/home/jens/Sync/thunderbird-tags.json</code>)</li>
+        <li>Konfiguriere ein Sync-Tool (Syncthing, Dropbox, SMB, etc.)</li>
+        <li>Stelle den Pfad in den Einstellungen ein</li>
+        <li>Starte die erste Synchronisierung</li>
+      </ol>
+
+      <p style="margin-top: 20px; padding: 15px; background-color: #e7f3ff; border-left: 4px solid #0078d4; border-radius: 4px;">
+        <strong>💡 Tipp:</strong> Unter dem Tab "Einstellungen" findest du alle Optionen zum Konfigurieren
+        der Synchronisierung. Im Tab "Logs" kannst du Fehler und Status überprüfen.
+      </p>
+    </div>
+  </div>
+
   <!-- Settings Tab -->
-  <div id="settings-tab" class="tab-content active">
+  <div id="settings-tab" class="tab-content">
 
   <div class="section">
     <h2>Synchronisierungsdatei</h2>
@@ -295,7 +368,7 @@
     <div class="form-group">
       <label class="checkbox-label">
         <input type="checkbox" id="autoSync">
-        Automatische Synchronisierung (alle 5 Minuten)
+        Automatische Synchronisierung aktivieren
       </label>
 
       <label class="checkbox-label">
