@@ -92,7 +92,21 @@ async function loadAndDisplayLogs() {
         entry.className = `log-entry ${log.level || 'INFO'}`;
 
         const timestamp = new Date(log.timestamp).toLocaleString('en-US');
-        entry.innerHTML = `<span class="log-timestamp">${timestamp}</span><span class="log-level">${log.level || 'INFO'}</span><span class="log-message">${escapeHtml(log.message)}</span>`;
+
+        const timestampSpan = document.createElement('span');
+        timestampSpan.className = 'log-timestamp';
+        timestampSpan.textContent = timestamp;
+        entry.appendChild(timestampSpan);
+
+        const levelSpan = document.createElement('span');
+        levelSpan.className = 'log-level';
+        levelSpan.textContent = log.level || 'INFO';
+        entry.appendChild(levelSpan);
+
+        const messageSpan = document.createElement('span');
+        messageSpan.className = 'log-message';
+        messageSpan.textContent = log.message;
+        entry.appendChild(messageSpan);
 
         logContainer.appendChild(entry);
       });
@@ -252,7 +266,18 @@ async function detectSyncthingFolders() {
       response.folders.forEach(folder => {
         const pathDiv = document.createElement('div');
         pathDiv.className = 'path-option';
-        pathDiv.innerHTML = `<strong>${folder.path}</strong><br><small>${folder.suggestedFile}</small>`;
+
+        const strongTag = document.createElement('strong');
+        strongTag.textContent = folder.path;
+        pathDiv.appendChild(strongTag);
+
+        const brTag = document.createElement('br');
+        pathDiv.appendChild(brTag);
+
+        const smallTag = document.createElement('small');
+        smallTag.textContent = folder.suggestedFile;
+        pathDiv.appendChild(smallTag);
+
         pathDiv.addEventListener('click', () => {
           document.getElementById('syncFilePath').value = folder.suggestedFile;
           detectedPaths.style.display = 'none';
