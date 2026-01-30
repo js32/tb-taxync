@@ -177,16 +177,16 @@ function escapeHtml(text) {
 async function loadSettings() {
   const defaults = {
     syncFilePath: '/home/jens/Sync/thunderbird-tags.json',
-    autoSync: true,
+    syncEnabled: true,
     syncOnChange: true,
     manualSync: true,
-    syncInterval: 5
+    syncInterval: 5 * 60 * 1000 // Store as milliseconds
   };
 
   const settings = await browser.storage.local.get(defaults);
 
   document.getElementById('syncFilePath').value = settings.syncFilePath || '';
-  document.getElementById('autoSync').checked = settings.autoSync;
+  document.getElementById('autoSync').checked = settings.syncEnabled;
   document.getElementById('syncOnChange').checked = settings.syncOnChange;
   document.getElementById('manualSync').checked = settings.manualSync;
 
@@ -200,7 +200,7 @@ async function saveSettings() {
 
   const settings = {
     syncFilePath: document.getElementById('syncFilePath').value.trim(),
-    autoSync: document.getElementById('autoSync').checked,
+    syncEnabled: document.getElementById('autoSync').checked,
     syncOnChange: document.getElementById('syncOnChange').checked,
     manualSync: document.getElementById('manualSync').checked,
     syncInterval: syncInterval * 60 * 1000 // Convert minutes to milliseconds
