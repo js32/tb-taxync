@@ -1,0 +1,102 @@
+[
+  {
+    "namespace": "fileIO",
+    "functions": [
+      {
+        "name": "exists",
+        "type": "function",
+        "description": "Check if a file or directory exists",
+        "async": true,
+        "parameters": [
+          {
+            "name": "path",
+            "type": "string",
+            "description": "Absolute path to check"
+          }
+        ]
+      },
+      {
+        "name": "readUTF8",
+        "type": "function",
+        "description": "Read file content as UTF-8",
+        "async": true,
+        "parameters": [
+          {
+            "name": "path",
+            "type": "string",
+            "description": "Absolute path to file"
+          }
+        ]
+      },
+      {
+        "name": "writeUTF8",
+        "type": "function",
+        "description": "Write UTF-8 content to file",
+        "async": true,
+        "parameters": [
+          {
+            "name": "path",
+            "type": "string",
+            "description": "Absolute path to file"
+          },
+          {
+            "name": "content",
+            "type": "string",
+            "description": "Content to write"
+          }
+        ]
+      },
+      {
+        "name": "stat",
+        "type": "function",
+        "description": "Get file information",
+        "async": true,
+        "parameters": [
+          {
+            "name": "path",
+            "type": "string",
+            "description": "Absolute path to file"
+          }
+        ]
+      },
+      {
+        "name": "getParent",
+        "type": "function",
+        "description": "Get parent directory path",
+        "async": false,
+        "parameters": [
+          {
+            "name": "path",
+            "type": "string",
+            "description": "File path"
+          }
+        ]
+      },
+      {
+        "name": "join",
+        "type": "function",
+        "description": "Join path components",
+        "async": false,
+        "parameters": [
+          {
+            "name": "base",
+            "type": "string",
+            "description": "Base path"
+          },
+          {
+            "name": "component",
+            "type": "string",
+            "description": "Path component to append"
+          }
+        ]
+      },
+      {
+        "name": "getProfileDir",
+        "type": "function",
+        "description": "Get Thunderbird profile directory",
+        "async": false,
+        "parameters": []
+      }
+    ]
+  }
+]

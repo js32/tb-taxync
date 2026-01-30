@@ -1,0 +1,68 @@
+{
+  "manifest_version": 3,
+  "name": "Thunderbird Sync Labels",
+  "version": "2.0.0",
+  "description": "Sync Thunderbird tags/keywords across multiple installations via Syncthing or SMB",
+  "author": "Your Name",
+
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "thunderbird-sync-labels@example.com",
+      "strict_min_version": "128.0"
+    }
+  },
+
+  "experiment_apis": {
+    "fileIO": {
+      "schema": "experiments/fileIO/schema.json",
+      "parent": {
+        "scopes": ["addon_parent"],
+        "paths": [["fileIO"]],
+        "script": "experiments/fileIO/parent.js"
+      }
+    }
+  },
+
+  "background": {
+    "scripts": [
+      "backends/backend-adapter.js",
+      "backends/storage-backend.js",
+      "backends/filesystem-backend.js",
+      "sync/path-discovery.js",
+      "sync/error-handler.js",
+      "sync/tag-manager.js",
+      "sync/sync-engine.js",
+      "background.js"
+    ]
+  },
+
+  "permissions": [
+    "messagesRead",
+    "accountsRead",
+    "storage",
+    "messagesTagsList",
+    "messagesTags"
+  ],
+
+  "options_ui": {
+    "page": "settings.html",
+    "open_in_tab": true
+  },
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Thunderbird Sync Labels",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png"
+    }
+  },
+
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "96": "icons/icon-96.png"
+  }
+}

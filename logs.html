@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thunderbird Sync Labels - Debug Logs</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Monaco', 'Courier New', monospace;
+      background-color: #1e1e1e;
+      color: #d4d4d4;
+      padding: 20px;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: #0078d4;
+      margin-bottom: 20px;
+      font-size: 24px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 8px 16px;
+      background-color: #0078d4;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+    }
+
+    button:hover {
+      background-color: #106ebe;
+    }
+
+    button.secondary {
+      background-color: #6c757d;
+    }
+
+    button.secondary:hover {
+      background-color: #5a6268;
+    }
+
+    button.danger {
+      background-color: #d32f2f;
+    }
+
+    button.danger:hover {
+      background-color: #b71c1c;
+    }
+
+    .log-container {
+      background-color: #252526;
+      border: 1px solid #3e3e42;
+      border-radius: 4px;
+      padding: 15px;
+      overflow-y: auto;
+      max-height: 600px;
+      margin-bottom: 20px;
+    }
+
+    .log-entry {
+      margin-bottom: 8px;
+      padding: 8px;
+      border-left: 3px solid #666;
+      background-color: #1e1e1e;
+    }
+
+    .log-entry.DEBUG {
+      border-left-color: #858585;
+      color: #858585;
+    }
+
+    .log-entry.INFO {
+      border-left-color: #4ec9b0;
+      color: #4ec9b0;
+    }
+
+    .log-entry.WARN {
+      border-left-color: #dcdcaa;
+      color: #dcdcaa;
+    }
+
+    .log-entry.ERROR {
+      border-left-color: #f48771;
+      color: #f48771;
+    }
+
+    .log-timestamp {
+      color: #858585;
+      font-size: 11px;
+    }
+
+    .log-level {
+      display: inline-block;
+      width: 60px;
+      font-weight: bold;
+    }
+
+    .log-message {
+      display: inline;
+    }
+
+    .log-stack {
+      margin-top: 5px;
+      padding: 5px;
+      background-color: #2d2d30;
+      border-radius: 2px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 11px;
+      color: #d4d4d4;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .stat-box {
+      background-color: #252526;
+      border: 1px solid #3e3e42;
+      border-radius: 4px;
+      padding: 15px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #0078d4;
+      margin-bottom: 5px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: #858585;
+      text-transform: uppercase;
+    }
+
+    .filter-group {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+    }
+
+    .filter-group label {
+      color: #d4d4d4;
+      font-size: 12px;
+      margin: 0;
+    }
+
+    .filter-group select {
+      padding: 5px;
+      background-color: #3c3c3c;
+      color: #d4d4d4;
+      border: 1px solid #3e3e42;
+      border-radius: 2px;
+      font-family: inherit;
+      font-size: 12px;
+    }
+
+    .empty-state {
+      text-align: center;
+      color: #858585;
+      padding: 40px 20px;
+    }
+
+    .export-section {
+      background-color: #252526;
+      border: 1px solid #3e3e42;
+      border-radius: 4px;
+      padding: 15px;
+      margin-top: 20px;
+    }
+
+    .export-section h3 {
+      color: #0078d4;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+
+    pre {
+      background-color: #1e1e1e;
+      border: 1px solid #3e3e42;
+      border-radius: 2px;
+      padding: 10px;
+      overflow-x: auto;
+      max-height: 300px;
+      font-size: 11px;
+      color: #d4d4d4;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📋 Thunderbird Sync Labels - Debug Logs</h1>
+
+    <div class="controls">
+      <button onclick="refreshLogs()">🔄 Refresh</button>
+      <button class="secondary" onclick="downloadLogs()">💾 Download Logs</button>
+      <button class="danger" onclick="clearLogs()">🗑️ Clear Logs</button>
+      <div class="filter-group" style="margin-left: auto;">
+        <label for="filterLevel">Filter:</label>
+        <select id="filterLevel" onchange="applyFilter()">
+          <option value="">All Levels</option>
+          <option value="DEBUG">DEBUG</option>
+          <option value="INFO">INFO</option>
+          <option value="WARN">WARN</option>
+          <option value="ERROR">ERROR</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="stats" id="statsContainer">
+      <div class="stat-box">
+        <div class="stat-value" id="totalLogs">0</div>
+        <div class="stat-label">Total Logs</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value" id="errorCount">0</div>
+        <div class="stat-label">Errors</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value" id="warningCount">0</div>
+        <div class="stat-label">Warnings</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value" id="lastSync">Never</div>
+        <div class="stat-label">Last Sync</div>
+      </div>
+    </div>
+
+    <div class="log-container" id="logContainer">
+      <div class="empty-state">No logs yet. Perform a sync to generate logs.</div>
+    </div>
+
+    <div class="export-section">
+      <h3>Export Logs (JSON)</h3>
+      <pre id="exportPreview" style="display: none;"></pre>
+      <button onclick="toggleExportPreview()">Show/Hide JSON Export</button>
+    </div>
+  </div>
+
+  <script src="logs.js"></script>
+</body>
+</html>
