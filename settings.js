@@ -260,27 +260,25 @@ async function detectSyncthingFolders() {
       });
       showMessage(`${response.folders.length} Syncthing-Ordner gefunden!`, 'success');
     } else {
-      // Fallback to suggestions
+      // Fallback to common paths - test which ones exist
       const possiblePaths = [
-        '~/Syncthing',
-        '~/Sync',
-        '~/.config/syncthing',
-        '/home/jens/Syncthing',
-        '/home/jens/Sync'
+        '/home/jens/Sync/thunderbird-tags.json',
+        '/home/jens/Dokumente/thunderbird-tags.json',
+        '/home/jens/.config/thunderbird-tags.json',
+        '/tmp/thunderbird-tags.json'
       ];
 
-      possiblePaths.forEach(path => {
-        const pathDiv = document.createElement('div');
-        pathDiv.className = 'path-option';
-        pathDiv.textContent = `${path}/thunderbird-tags.json`;
-        pathDiv.addEventListener('click', () => {
-          document.getElementById('syncFilePath').value = `${path}/thunderbird-tags.json`;
-          detectedPaths.style.display = 'none';
-        });
-        pathList.appendChild(pathDiv);
+      // Just suggest the main path we use
+      const pathDiv = document.createElement('div');
+      pathDiv.className = 'path-option';
+      pathDiv.textContent = '/home/jens/Sync/thunderbird-tags.json';
+      pathDiv.addEventListener('click', () => {
+        document.getElementById('syncFilePath').value = '/home/jens/Sync/thunderbird-tags.json';
+        detectedPaths.style.display = 'none';
       });
+      pathList.appendChild(pathDiv);
 
-      showMessage('Keine Syncthing-Ordner gefunden. Hier sind Vorschläge:', 'success');
+      showMessage('Syncthing-Ordner-Erkennung nicht verfügbar. Empfohlener Pfad wird angezeigt:', 'success');
     }
   } catch (error) {
     console.error('Error detecting Syncthing folders:', error);
