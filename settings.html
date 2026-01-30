@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>TB Labels Sync - Einstellungen</title>
+  <title>TB Labels Sync - Settings</title>
   <style>
     body {
       padding: 20px;
@@ -285,58 +285,58 @@
   </style>
 </head>
 <body>
-  <h1>TB-TaXync - Einstellungen</h1>
+  <h1>TB-TaXync - Settings</h1>
 
   <!-- Tab Navigation -->
   <div class="tabs">
-    <button class="tab-button active" data-tab="welcome">📖 Übersicht</button>
-    <button class="tab-button" data-tab="settings">⚙️ Einstellungen</button>
+    <button class="tab-button active" data-tab="welcome">📖 Overview</button>
+    <button class="tab-button" data-tab="settings">⚙️ Settings</button>
     <button class="tab-button" data-tab="logs">📋 Logs</button>
   </div>
 
   <!-- Welcome Tab -->
   <div id="welcome-tab" class="tab-content active">
-    <h2>Willkommen zu TB-TaXync</h2>
+    <h2>Welcome to TB-TaXync</h2>
 
     <div class="section">
-      <h3>Was macht diese Extension?</h3>
+      <h3>What does this extension do?</h3>
       <p style="line-height: 1.6; margin-bottom: 15px;">
-        <strong>TB-TaXync</strong> synchronisiert deine Thunderbird-Beschriftungen (Tags/Keywords)
-        zwischen mehreren Computern und Thunderbird-Installationen. So haben alle deine
-        E-Mail-Tags überall den gleichen Stand.
+        <strong>TB-TaXync</strong> synchronizes your Thunderbird labels (Tags/Keywords)
+        between multiple computers and Thunderbird installations. This keeps all your
+        email tags in sync everywhere.
       </p>
 
-      <h3 style="margin-top: 20px;">Wie funktioniert es?</h3>
+      <h3 style="margin-top: 20px;">How does it work?</h3>
       <ol style="line-height: 1.8; margin-bottom: 15px; margin-left: 20px;">
-        <li><strong>Export:</strong> Deine Tags werden in eine JSON-Datei exportiert</li>
-        <li><strong>Speichern:</strong> Die Datei wird an einem zentralen Ort gespeichert</li>
-        <li><strong>Sync:</strong> Andere Computer laden die Tags von dort und importieren sie</li>
+        <li><strong>Export:</strong> Your tags are exported to a JSON file</li>
+        <li><strong>Save:</strong> The file is stored in a central location</li>
+        <li><strong>Sync:</strong> Other computers load the tags from there and import them</li>
       </ol>
 
-      <h3 style="margin-top: 20px;">Sync-Tools</h3>
+      <h3 style="margin-top: 20px;">Sync Tools</h3>
       <p style="margin-bottom: 10px;">
-        Du kannst verschiedene Synchronisierungs-Lösungen verwenden, um die Datei zwischen
-        Rechnern zu synchronisieren:
+        You can use various synchronization solutions to sync the file between
+        computers:
       </p>
       <ul style="line-height: 1.8; margin-left: 20px;">
-        <li><strong>⭐ Syncthing (empfohlen)</strong> - Dezentraler, sicherer und privater Dateisync zwischen Geräten. Keine zentralen Server nötig. <em style="color: #0078d4;">Das ist die empfohlene Lösung!</em></li>
-        <li><strong>Dropbox / Google Drive / OneDrive</strong> - Cloud-Speicher</li>
-        <li><strong>SMB-Freigabe</strong> - Netzwerk-Freigaben (NAS, Windows-Freigaben)</li>
-        <li><strong>NFS</strong> - Netzwerk-Dateisystem (Linux)</li>
-        <li><strong>SSH/SFTP</strong> - Fernzugriff auf Server</li>
+        <li><strong>⭐ Syncthing (recommended)</strong> - Decentralized, secure and private file sync between devices. No central servers required. <em style="color: #0078d4;">This is the recommended solution!</em></li>
+        <li><strong>Dropbox / Google Drive / OneDrive</strong> - Cloud storage</li>
+        <li><strong>SMB-Freigabe</strong> - Network shares (NAS, Windows shares)</li>
+        <li><strong>NFS</strong> - Network file system (Linux)</li>
+        <li><strong>SSH/SFTP</strong> - Remote server access</li>
       </ul>
 
-      <h3 style="margin-top: 20px;">Erste Schritte</h3>
+      <h3 style="margin-top: 20px;">Getting Started</h3>
       <ol style="line-height: 1.8; margin-left: 20px;">
-        <li>Wähle einen Speicherort für die Sync-Datei (z.B. <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px;">~/Sync/thunderbird-tags.json</code> oder <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px;">/mnt/syncthing/thunderbird-tags.json</code>)</li>
-        <li>Konfiguriere ein Sync-Tool (Syncthing, Dropbox, SMB, etc.)</li>
-        <li>Stelle den Pfad in den Einstellungen ein</li>
-        <li>Starte die erste Synchronisierung</li>
+        <li>Choose a storage location for the sync file (e.g. <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px;">~/Sync/thunderbird-tags.json</code> or <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px;">/mnt/syncthing/thunderbird-tags.json</code>)</li>
+        <li>Configure a sync tool (Syncthing, Dropbox, SMB, etc.)</li>
+        <li>Set the path in settings</li>
+        <li>Start the first synchronization</li>
       </ol>
 
       <p style="margin-top: 20px; padding: 15px; background-color: #e7f3ff; border-left: 4px solid #0078d4; border-radius: 4px;">
-        <strong>💡 Tipp:</strong> Unter dem Tab "Einstellungen" findest du alle Optionen zum Konfigurieren
-        der Synchronisierung. Im Tab "Logs" kannst du Fehler und Status überprüfen.
+        <strong>💡 Tip:</strong> Under the "Settings" tab you'll find all options for configuring
+        synchronization. In the "Logs" tab you can check errors and status.
       </p>
     </div>
   </div>
@@ -345,56 +345,56 @@
   <div id="settings-tab" class="tab-content">
 
   <div class="section">
-    <h2>Synchronisierungsdatei</h2>
+    <h2>Synchronization File</h2>
 
     <div class="form-group">
-      <label for="syncFilePath">Dateipfad:</label>
-      <input type="text" id="syncFilePath" placeholder="/pfad/zu/thunderbird-tags.json">
-      <div class="hint">Gib den vollständigen Pfad zur JSON-Datei an, die synchronisiert werden soll.</div>
+      <label for="syncFilePath">File Path:</label>
+      <input type="text" id="syncFilePath" placeholder="/path/to/thunderbird-tags.json">
+      <div class="hint">Enter the full path to the JSON file that should be synchronized.</div>
     </div>
 
     <div id="detectedPaths" class="detected-paths" style="display: none;">
-      <h3>Erkannte Syncthing-Ordner:</h3>
+      <h3>Detected Syncthing Folders:</h3>
       <div id="pathList"></div>
     </div>
 
-    <button id="detectSyncthingBtn" class="secondary">Syncthing-Ordner erkennen</button>
-    <button id="browseBtn" class="secondary">Durchsuchen...</button>
+    <button id="detectSyncthingBtn" class="secondary">Detect Syncthing Folders</button>
+    <button id="browseBtn" class="secondary">Browse...</button>
   </div>
 
   <div class="section">
-    <h2>Synchronisierungsoptionen</h2>
+    <h2>Synchronization Options</h2>
 
     <div class="form-group">
       <label class="checkbox-label">
         <input type="checkbox" id="autoSync">
-        Automatische Synchronisierung aktivieren
+        Enable automatic synchronization
       </label>
 
       <label class="checkbox-label">
         <input type="checkbox" id="syncOnChange" checked>
-        Bei Änderungen synchronisieren
+        Synchronize on changes
       </label>
 
       <label class="checkbox-label">
         <input type="checkbox" id="manualSync">
-        Manuellen Sync-Button anzeigen
+        Show manual sync button
       </label>
     </div>
   </div>
 
   <div class="section">
-    <h2>Synchronisierungs-Intervall</h2>
+    <h2>Synchronization Interval</h2>
 
     <div class="form-group">
-      <label for="syncInterval">Automatisch synchronisieren alle (Minuten):</label>
+      <label for="syncInterval">Automatically synchronize every (minutes):</label>
       <input type="number" id="syncInterval" min="1" max="1440" value="5" placeholder="5">
-      <div class="hint">Zeit in Minuten zwischen automatischen Syncs. 0 = deaktiviert.</div>
+      <div class="hint">Time in minutes between automatic syncs. 0 = disabled.</div>
     </div>
   </div>
 
-  <button id="saveBtn">Einstellungen speichern</button>
-  <button id="testSyncBtn" class="secondary">Sync testen</button>
+  <button id="saveBtn">Save Settings</button>
+  <button id="testSyncBtn" class="secondary">Test Sync</button>
 
   <div id="statusMessage" class="status-message"></div>
 
@@ -407,30 +407,30 @@
     <div class="stats" id="statsContainer">
       <div class="stat-box">
         <div class="stat-value" id="totalLogs">0</div>
-        <div class="stat-label">Insgesamt</div>
+        <div class="stat-label">Total</div>
       </div>
       <div class="stat-box">
         <div class="stat-value" id="errorCount">0</div>
-        <div class="stat-label">Fehler</div>
+        <div class="stat-label">Errors</div>
       </div>
       <div class="stat-box">
         <div class="stat-value" id="warningCount">0</div>
-        <div class="stat-label">Warnungen</div>
+        <div class="stat-label">Warnings</div>
       </div>
       <div class="stat-box">
-        <div class="stat-value" id="lastSync">Nie</div>
-        <div class="stat-label">Letzter Sync</div>
+        <div class="stat-value" id="lastSync">Never</div>
+        <div class="stat-label">Last Sync</div>
       </div>
     </div>
 
     <div style="margin-bottom: 15px;">
-      <button id="refreshLogsBtn">🔄 Aktualisieren</button>
-      <button id="downloadLogsBtn" class="secondary">💾 Herunterladen</button>
-      <button id="clearLogsBtn" class="secondary">🗑️ Löschen</button>
+      <button id="refreshLogsBtn">🔄 Refresh</button>
+      <button id="downloadLogsBtn" class="secondary">💾 Download</button>
+      <button id="clearLogsBtn" class="secondary">🗑️ Clear</button>
     </div>
 
     <div class="log-container" id="logContainer">
-      <div class="empty-state">Keine Logs vorhanden. Führe einen Sync durch, um Logs zu generieren.</div>
+      <div class="empty-state">No logs available. Perform a sync to generate logs.</div>
     </div>
   </div><!-- End logs-tab -->
 

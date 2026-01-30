@@ -37,17 +37,17 @@ async function updateStatus() {
 
     if (storage.lastSync) {
       const date = new Date(storage.lastSync);
-      lastSyncTime.textContent = date.toLocaleString('de-DE');
+      lastSyncTime.textContent = date.toLocaleString('en-US');
 
       if (storage.lastSyncResult?.status === 'success') {
-        syncStatus.textContent = '✓ Erfolgreich';
+        syncStatus.textContent = '✓ Success';
         syncStatus.style.color = '#155724';
       } else if (storage.lastSyncResult?.status === 'error') {
-        syncStatus.textContent = '✗ Fehler';
+        syncStatus.textContent = '✗ Error';
         syncStatus.style.color = '#721c24';
       }
     } else {
-      lastSyncTime.textContent = 'Noch nicht synchronisiert';
+      lastSyncTime.textContent = 'Not yet synced';
     }
   } catch (error) {
     console.error('Failed to get status:', error);

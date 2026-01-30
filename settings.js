@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Browse button handler (placeholder)
   document.getElementById('browseBtn').addEventListener('click', () => {
-    showMessage('Hinweis: Die Dateiauswahl ist derzeit nur manuell über Texteingabe möglich.', 'error');
+    showMessage('Note: File selection is currently only possible manually via text input.', 'error');
   });
 });
 
@@ -80,7 +80,7 @@ async function loadAndDisplayLogs() {
       const logContainer = document.getElementById('logContainer');
 
       if (logs.length === 0) {
-        logContainer.innerHTML = '<div class="empty-state">Keine Logs vorhanden. Führe einen Sync durch, um Logs zu generieren.</div>';
+        logContainer.innerHTML = '<div class="empty-state">No logs available. Perform a sync to generate logs.</div>';
         updateLogStats(logs);
         return;
       }
@@ -91,7 +91,7 @@ async function loadAndDisplayLogs() {
         const entry = document.createElement('div');
         entry.className = `log-entry ${log.level || 'INFO'}`;
 
-        const timestamp = new Date(log.timestamp).toLocaleString('de-DE');
+        const timestamp = new Date(log.timestamp).toLocaleString('en-US');
         entry.innerHTML = `<span class="log-timestamp">${timestamp}</span><span class="log-level">${log.level || 'INFO'}</span><span class="log-message">${escapeHtml(log.message)}</span>`;
 
         logContainer.appendChild(entry);
@@ -143,7 +143,7 @@ async function downloadLogs() {
     }
   } catch (error) {
     console.error('Error downloading logs:', error);
-    showMessage('Fehler beim Download der Logs', 'error');
+    showMessage('Error downloading logs', 'error');
   }
 }
 
@@ -151,17 +151,17 @@ async function downloadLogs() {
  * Clear all logs
  */
 async function clearLogs() {
-  if (!confirm('Möchtest du alle Logs löschen?')) {
+  if (!confirm('Do you want to delete all logs?')) {
     return;
   }
 
   try {
     await browser.runtime.sendMessage({ action: 'clearLogs' });
-    showMessage('Logs gelöscht', 'success');
+    showMessage('Logs deleted', 'success');
     loadAndDisplayLogs();
   } catch (error) {
     console.error('Error clearing logs:', error);
-    showMessage('Fehler beim Löschen der Logs', 'error');
+    showMessage('Error clearing logs', 'error');
   }
 }
 
@@ -208,28 +208,28 @@ async function saveSettings() {
 
   try {
     await browser.storage.local.set(settings);
-    showMessage('Einstellungen erfolgreich gespeichert!', 'success');
+    showMessage('Settings saved successfully!', 'success');
 
     // Notify background script to reload settings
     await browser.runtime.sendMessage({ action: 'reloadSettings' });
   } catch (error) {
-    showMessage(`Fehler beim Speichern: ${error.message}`, 'error');
+    showMessage(`Error saving settings: ${error.message}`, 'error');
   }
 }
 
 async function testSync() {
-  showMessage('Teste Synchronisierung...', 'success');
+  showMessage('Testing synchronization...', 'success');
 
   try {
     const response = await browser.runtime.sendMessage({ action: 'performSync' });
 
     if (response.success) {
-      showMessage('Sync-Test erfolgreich!', 'success');
+      showMessage('Sync test successful!', 'success');
     } else {
-      showMessage(`Sync-Test fehlgeschlagen: ${response.error}`, 'error');
+      showMessage(`Sync test failed: ${response.error}`, 'error');
     }
   } catch (error) {
-    showMessage(`Fehler beim Sync-Test: ${error.message}`, 'error');
+    showMessage(`Error during sync test: ${error.message}`, 'error');
   }
 }
 
@@ -237,7 +237,7 @@ async function detectSyncthingFolders() {
   const detectedPaths = document.getElementById('detectedPaths');
   const pathList = document.getElementById('pathList');
 
-  pathList.innerHTML = '<div style="text-align: center; padding: 10px;">Suche nach Syncthing-Ordnern...</div>';
+  pathList.innerHTML = '<div style="text-align: center; padding: 10px;">Searching for Syncthing folders...</div>';
   detectedPaths.style.display = 'block';
 
   try {
@@ -259,7 +259,7 @@ async function detectSyncthingFolders() {
         });
         pathList.appendChild(pathDiv);
       });
-      showMessage(`${response.folders.length} Syncthing-Ordner gefunden!`, 'success');
+      showMessage(`${response.folders.length} Syncthing folders found!`, 'success');
     } else {
       // Fallback to common paths - test which ones exist
       const possiblePaths = [
@@ -279,11 +279,11 @@ async function detectSyncthingFolders() {
       });
       pathList.appendChild(pathDiv);
 
-      showMessage('Syncthing-Ordner-Erkennung nicht verfügbar. Empfohlener Pfad wird angezeigt:', 'success');
+      showMessage('Syncthing folder detection not available. Recommended path is shown:', 'success');
     }
   } catch (error) {
     console.error('Error detecting Syncthing folders:', error);
-    showMessage('Fehler bei der Ordner-Erkennung. Bitte gib den Pfad manuell ein.', 'error');
+    showMessage('Error detecting folders. Please enter the path manually.', 'error');
   }
 }
 
