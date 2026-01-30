@@ -7,8 +7,16 @@ let allLogs = [];
 let filteredLogs = [];
 const maxLogsToDisplay = 1000;
 
-// Load logs on page open
+// Load logs on page open and setup event listeners
 document.addEventListener('DOMContentLoaded', async () => {
+  // Setup event listeners
+  document.getElementById('refreshBtn')?.addEventListener('click', refreshLogs);
+  document.getElementById('downloadBtn')?.addEventListener('click', downloadLogs);
+  document.getElementById('clearBtn')?.addEventListener('click', clearLogs);
+  document.getElementById('filterLevel')?.addEventListener('change', applyFilter);
+  document.getElementById('toggleExportBtn')?.addEventListener('click', toggleExportPreview);
+
+  // Load initial logs
   await refreshLogs();
 });
 

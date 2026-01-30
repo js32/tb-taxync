@@ -219,12 +219,12 @@
     <h1>📋 Thunderbird Sync Labels - Debug Logs</h1>
 
     <div class="controls">
-      <button onclick="refreshLogs()">🔄 Refresh</button>
-      <button class="secondary" onclick="downloadLogs()">💾 Download Logs</button>
-      <button class="danger" onclick="clearLogs()">🗑️ Clear Logs</button>
+      <button id="refreshBtn">🔄 Refresh</button>
+      <button class="secondary" id="downloadBtn">💾 Download Logs</button>
+      <button class="danger" id="clearBtn">🗑️ Clear Logs</button>
       <div class="filter-group" style="margin-left: auto;">
         <label for="filterLevel">Filter:</label>
-        <select id="filterLevel" onchange="applyFilter()">
+        <select id="filterLevel">
           <option value="">All Levels</option>
           <option value="DEBUG">DEBUG</option>
           <option value="INFO">INFO</option>
@@ -260,7 +260,7 @@
     <div class="export-section">
       <h3>Export Logs (JSON)</h3>
       <pre id="exportPreview" style="display: none;"></pre>
-      <button onclick="toggleExportPreview()">Show/Hide JSON Export</button>
+      <button id="toggleExportBtn">Show/Hide JSON Export</button>
     </div>
   </div>
 
