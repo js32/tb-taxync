@@ -25,14 +25,20 @@ document.addEventListener('DOMContentLoaded', async () => {
  */
 async function refreshLogs() {
   try {
+    // Check if browser API is available (may not be in some contexts)
+    if (typeof browser === 'undefined') {
+      console.warn('Browser API not available in this context');
+      displayEmptyState('Extension context not available. Please refresh the page.');
+      return;
+    }
+
     const storage = await browser.storage.local.get([
       'lastSyncResult',
       'lastSync',
       'extensionLogs'
     ]);
 
-    // In a real implementation, logs would be stored in browser.storage
-    // For now, we'll fetch from background script
+    // Fetch logs from background script
     const response = await browser.runtime.sendMessage({
       action: 'getLogs'
     });
@@ -45,7 +51,7 @@ async function refreshLogs() {
     }
   } catch (error) {
     console.error('Failed to load logs:', error);
-    displayEmptyState('Failed to load logs');
+    displayEmptyState('Failed to load logs: ' + error.message);
   }
 }
 
@@ -139,6 +145,12 @@ async function clearLogs() {
   }
 
   try {
+    // Check if browser API is available
+    if (typeof browser === 'undefined') {
+      alert('Extension context not available. Please refresh the page.');
+      return;
+    }
+
     await browser.runtime.sendMessage({
       action: 'clearLogs'
     });
@@ -149,7 +161,7 @@ async function clearLogs() {
     updateStats({});
   } catch (error) {
     console.error('Failed to clear logs:', error);
-    alert('Failed to clear logs');
+    alert('Failed to clear logs: ' + error.message);
   }
 }
 
