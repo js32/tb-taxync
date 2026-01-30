@@ -9,8 +9,8 @@ let syncEngine = null;
 let syncScheduler = null;
 const SYNC_TIMEOUT = 30000; // 30 seconds timeout for sync operations
 
-// Default to storage backend instead of filesystem
-const DEFAULT_BACKEND_TYPE = 'storage';
+// Default to filesystem backend for actual file syncing
+const DEFAULT_BACKEND_TYPE = 'filesystem';
 
 // Listen for extension installation or update
 browser.runtime.onInstalled.addListener(async (details) => {
@@ -19,36 +19,40 @@ browser.runtime.onInstalled.addListener(async (details) => {
   if (details.reason === "install") {
     console.log("First time installation - setting default backend...");
 
-    // Initialize default settings with storage backend
+    // Get default path suggestion
+    const defaultPath = '/home/jens/Sync/thunderbird-tags.json';
+
+    // Initialize default settings with filesystem backend
     await browser.storage.local.set({
       syncEnabled: false, // Disabled until user configures
       lastSync: null,
       syncInterval: 3600000, // 1 hour default
       backendConfig: {
-        type: 'storage',
-        storageKey: 'thunderbird-sync-labels-tags'
+        type: 'filesystem',
+        filePath: defaultPath
       },
       tagDefinitions: {}
     });
 
-    console.log(`[Install] Default backend set to: storage`);
-    console.log('[Install] Extension is ready to use with storage backend');
+    console.log(`[Install] Default path set: ${defaultPath}`);
+    console.log('[Install] Configure path in settings to enable syncing');
   } else if (details.reason === "update") {
     console.log("Extension updated to version:", browser.runtime.getManifest().version);
 
     // Check if backend is configured, if not, set default
     const storage = await browser.storage.local.get('backendConfig');
-    if (!storage.backendConfig || (!storage.backendConfig.storageKey && !storage.backendConfig.filePath)) {
-      console.log("[Update] No backend configured, setting default to storage...");
+    if (!storage.backendConfig || !storage.backendConfig.filePath) {
+      console.log("[Update] No backend configured, setting default...");
+      const defaultPath = '/home/jens/Sync/thunderbird-tags.json';
       await browser.storage.local.set({
         syncEnabled: false,
         syncInterval: 3600000,
         backendConfig: {
-          type: 'storage',
-          storageKey: 'thunderbird-sync-labels-tags'
+          type: 'filesystem',
+          filePath: defaultPath
         }
       });
-      console.log(`[Update] Default backend set to: storage`);
+      console.log(`[Update] Default path set: ${defaultPath}`);
     }
   }
 

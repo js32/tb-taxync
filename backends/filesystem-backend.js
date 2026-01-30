@@ -58,8 +58,8 @@ class FilesystemBackend {
       console.log(`[Filesystem] Parent directory exists: ${parentExists}`);
 
       if (!parentExists) {
-        console.warn(`[Filesystem] Parent directory does not exist: ${parentPath}`);
-        return false;
+        // Try to create parent directory
+        console.log(`[Filesystem] Parent directory does not exist, will create on first sync: ${parentPath}`);
       }
 
       // If file doesn't exist, that's okay - we'll create it on first sync
