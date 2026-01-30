@@ -1,358 +1,148 @@
-/**
- * Settings page script
- */
+// TB Labels Sync - Settings Script
 
-// DOM Elements
-const syncTypeSelect = document.getElementById('syncType');
-const filesystemPath = document.getElementById('filesystemPath');
-const testFilesystemButton = document.getElementById('testFilesystemButton');
-const syncIntervalInput = document.getElementById('syncInterval');
-const enableAutoSyncCheckbox = document.getElementById('enableAutoSync');
-const saveButton = document.getElementById('saveButton');
-const cancelButton = document.getElementById('cancelButton');
-const statusMessage = document.getElementById('statusMessage');
-
-// Load settings on page load
 document.addEventListener('DOMContentLoaded', async () => {
-  setupTabNavigation();
   await loadSettings();
-  setupEventListeners();
 
-  // Setup logs buttons
-  document.getElementById('refreshLogsBtn')?.addEventListener('click', loadLogs);
-  document.getElementById('clearLogsBtn')?.addEventListener('click', clearAllLogs);
+  // Save button handler
+  document.getElementById('saveBtn').addEventListener('click', saveSettings);
 
-  // Check if we should show logs tab from URL parameter
-  const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('tab') === 'logs') {
-    switchTab('logs');
-  }
+  // Test sync button handler
+  document.getElementById('testSyncBtn').addEventListener('click', testSync);
+
+  // Detect Syncthing folders button handler
+  document.getElementById('detectSyncthingBtn').addEventListener('click', detectSyncthingFolders);
+
+  // Browse button handler (placeholder)
+  document.getElementById('browseBtn').addEventListener('click', () => {
+    showMessage('Hinweis: Die Dateiauswahl ist derzeit nur manuell über Texteingabe möglich.', 'error');
+  });
 });
 
-/**
- * Setup tab navigation
- */
-function setupTabNavigation() {
-  // Add tab buttons to settings page
-  const heading = document.querySelector('h1');
-  if (heading) {
-    const tabContainer = document.createElement('div');
-    tabContainer.id = 'tabContainer';
-    tabContainer.innerHTML = `
-      <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #ddd;">
-        <button class="tab-button active" data-tab="settings">⚙️ Settings</button>
-        <button class="tab-button" data-tab="logs">📋 Logs</button>
-      </div>
-    `;
-    heading.parentNode.insertBefore(tabContainer, heading.nextSibling);
-
-    // Add tab button styling
-    const style = document.createElement('style');
-    style.textContent = `
-      .tab-button {
-        padding: 10px 15px;
-        background: none;
-        border: none;
-        cursor: pointer;
-        font-size: 14px;
-        color: #666;
-        border-bottom: 3px solid transparent;
-        margin-bottom: -2px;
-        transition: all 0.3s;
-      }
-      .tab-button.active {
-        color: #0078d4;
-        border-bottom-color: #0078d4;
-      }
-      .tab-button:hover {
-        color: #0078d4;
-      }
-      .tab-content {
-        display: none;
-      }
-      .tab-content.active {
-        display: block;
-      }
-    `;
-    document.head.appendChild(style);
-
-    // Add click handlers
-    document.querySelectorAll('.tab-button').forEach(btn => {
-      btn.addEventListener('click', (e) => switchTab(e.target.dataset.tab));
-    });
-  }
-}
-
-/**
- * Switch between tabs
- */
-function switchTab(tabName) {
-  // Hide all tab contents
-  document.querySelectorAll('.section').forEach(section => {
-    section.style.display = tabName === 'settings' ? 'block' : 'none';
-  });
-  document.querySelector('.button-group').style.display = tabName === 'settings' ? 'flex' : 'none';
-
-  // Show logs section
-  const logsSection = Array.from(document.querySelectorAll('.section')).find(s =>
-    s.querySelector('h2')?.textContent.includes('Logs')
-  );
-  if (logsSection) {
-    logsSection.style.display = tabName === 'logs' ? 'block' : 'none';
-  }
-
-  // Update tab buttons
-  document.querySelectorAll('.tab-button').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.tab === tabName);
-  });
-
-  // Load logs if switching to logs tab
-  if (tabName === 'logs') {
-    loadLogs();
-  }
-}
-
-/**
- * Load current settings from storage
- */
 async function loadSettings() {
-  try {
-    const storage = await browser.storage.local.get([
-      'backendConfig',
-      'syncInterval',
-      'syncEnabled',
-      'syncType'
-    ]);
+  const defaults = {
+    syncFilePath: '/home/jens/Sync/thunderbird-tags.json',
+    autoSync: true,
+    syncOnChange: false,
+    manualSync: true,
+    syncService: 'syncthing'
+  };
 
-    const backendConfig = storage.backendConfig || {};
+  const settings = await browser.storage.local.get(defaults);
 
-    // Load sync type
-    if (storage.syncType) {
-      syncTypeSelect.value = storage.syncType;
-    }
+  document.getElementById('syncFilePath').value = settings.syncFilePath || '';
+  document.getElementById('autoSync').checked = settings.autoSync;
+  document.getElementById('syncOnChange').checked = settings.syncOnChange;
+  document.getElementById('manualSync').checked = settings.manualSync;
 
-    // Load filesystem path
-    if (backendConfig.filePath) {
-      filesystemPath.value = backendConfig.filePath;
-    }
-
-    // Load sync settings
-    if (storage.syncInterval) {
-      syncIntervalInput.value = storage.syncInterval / 60000; // Convert ms to minutes
-    }
-
-    enableAutoSyncCheckbox.checked = storage.syncEnabled || false;
-  } catch (error) {
-    console.error('Failed to load settings:', error);
-    showStatus('Failed to load settings', 'error');
+  const serviceRadio = document.getElementById(`syncService${capitalize(settings.syncService)}`);
+  if (serviceRadio) {
+    serviceRadio.checked = true;
   }
 }
 
-/**
- * Setup event listeners
- */
-function setupEventListeners() {
-  syncTypeSelect.addEventListener('change', updatePathSuggestion);
-  testFilesystemButton.addEventListener('click', testFilesystemConnection);
-  saveButton.addEventListener('click', saveSettings);
-  cancelButton.addEventListener('click', closeSettings);
-}
-
-/**
- * Update path suggestion based on sync type
- */
-function updatePathSuggestion() {
-  const syncType = syncTypeSelect.value;
-
-  if (syncType === 'syncthing') {
-    filesystemPath.value = '/home/jens/Sync/thunderbird-tags.json';
-    filesystemPath.placeholder = '/home/jens/Sync/thunderbird-tags.json';
-    console.log('[Settings] Set Syncthing path');
-  } else if (syncType === 'smb') {
-    filesystemPath.value = '/mnt/smb/thunderbird-tags.json';
-    filesystemPath.placeholder = '/mnt/smb/thunderbird-tags.json';
-    console.log('[Settings] Set SMB path');
-  } else {
-    filesystemPath.value = '';
-    filesystemPath.placeholder = 'Select sync method above first';
-  }
-}
-
-
-/**
- * Test filesystem connection
- */
-async function testFilesystemConnection() {
-  const path = filesystemPath.value.trim();
-
-  if (!path) {
-    showStatus('Please enter a file path', 'error');
-    return;
-  }
-
-  testFilesystemButton.disabled = true;
-  showStatus('Testing connection...', 'info');
-
-  try {
-    // Send test request to background script
-    const response = await browser.runtime.sendMessage({
-      action: 'testPath',
-      path: path
-    });
-
-    const testResult = document.getElementById('testResult');
-    if (response.success) {
-      testResult.innerHTML = '<span style="color: green;">✓ Path is accessible and writable</span>';
-      showStatus('Connection test successful', 'success');
-    } else {
-      testResult.innerHTML = `<span style="color: red;">✗ ${response.message || response.error}</span>`;
-      showStatus(`Connection test failed: ${response.message || response.error}`, 'error');
-    }
-  } catch (error) {
-    const testResult = document.getElementById('testResult');
-    testResult.innerHTML = `<span style="color: red;">✗ Error: ${error.message}</span>`;
-    showStatus(`Connection test failed: ${error.message}`, 'error');
-  } finally {
-    testFilesystemButton.disabled = false;
-  }
-}
-
-/**
- * Save all settings
- */
 async function saveSettings() {
-  const syncType = syncTypeSelect.value;
-
-  saveButton.disabled = true;
-  showStatus('Saving settings...', 'info');
+  const settings = {
+    syncFilePath: document.getElementById('syncFilePath').value.trim(),
+    autoSync: document.getElementById('autoSync').checked,
+    syncOnChange: document.getElementById('syncOnChange').checked,
+    manualSync: document.getElementById('manualSync').checked,
+    syncService: document.querySelector('input[name="syncService"]:checked').value
+  };
 
   try {
-    // Use Storage backend by default (more reliable)
-    // But allow filesystem if path is specified
-    let backendConfig;
+    await browser.storage.local.set(settings);
+    showMessage('Einstellungen erfolgreich gespeichert!', 'success');
 
-    if (syncType === 'storage' || !syncType) {
-      // Use modern storage backend
-      backendConfig = {
-        type: 'storage',
-        storageKey: 'thunderbird-sync-labels-tags'
-      };
-      console.log('[Settings] Using Storage Backend');
-    } else {
-      // User wants filesystem backend
-      const path = filesystemPath.value.trim();
-      if (!path) {
-        showStatus('Please enter a file path for filesystem backend', 'error');
-        saveButton.disabled = false;
-        return;
-      }
-      backendConfig = {
-        type: 'filesystem',
-        filePath: path
-      };
-      console.log('[Settings] Using Filesystem Backend:', path);
-    }
-
-    // Convert interval from minutes to milliseconds
-    const syncIntervalMs = parseInt(syncIntervalInput.value) * 60 * 1000;
-
-    await browser.storage.local.set({
-      backendConfig: backendConfig,
-      syncInterval: syncIntervalMs,
-      syncEnabled: enableAutoSyncCheckbox.checked,
-      syncType: syncType
-    });
-
-    // Notify background script of config change
-    await browser.runtime.sendMessage({
-      action: 'updateBackendConfig',
-      config: backendConfig
-    });
-
-    showStatus('Settings saved successfully!', 'success');
-
-    // Close after a brief delay
-    setTimeout(() => {
-      closeSettings();
-    }, 1500);
+    // Notify background script to reload settings
+    await browser.runtime.sendMessage({ action: 'reloadSettings' });
   } catch (error) {
-    console.error('Failed to save settings:', error);
-    showStatus(`Failed to save settings: ${error.message}`, 'error');
-  } finally {
-    saveButton.disabled = false;
+    showMessage(`Fehler beim Speichern: ${error.message}`, 'error');
   }
 }
 
-/**
- * Show status message
- */
-function showStatus(message, type) {
+async function testSync() {
+  showMessage('Teste Synchronisierung...', 'success');
+
+  try {
+    const response = await browser.runtime.sendMessage({ action: 'performSync' });
+
+    if (response.success) {
+      showMessage('Sync-Test erfolgreich!', 'success');
+    } else {
+      showMessage(`Sync-Test fehlgeschlagen: ${response.error}`, 'error');
+    }
+  } catch (error) {
+    showMessage(`Fehler beim Sync-Test: ${error.message}`, 'error');
+  }
+}
+
+async function detectSyncthingFolders() {
+  const detectedPaths = document.getElementById('detectedPaths');
+  const pathList = document.getElementById('pathList');
+
+  pathList.innerHTML = '<div style="text-align: center; padding: 10px;">Suche nach Syncthing-Ordnern...</div>';
+  detectedPaths.style.display = 'block';
+
+  try {
+    // Try to use native messaging to detect actual folders
+    const response = await browser.runtime.sendMessage({
+      action: 'detectSyncthing'
+    });
+
+    pathList.innerHTML = '';
+
+    if (response.success && response.folders && response.folders.length > 0) {
+      response.folders.forEach(folder => {
+        const pathDiv = document.createElement('div');
+        pathDiv.className = 'path-option';
+        pathDiv.innerHTML = `<strong>${folder.path}</strong><br><small>${folder.suggestedFile}</small>`;
+        pathDiv.addEventListener('click', () => {
+          document.getElementById('syncFilePath').value = folder.suggestedFile;
+          detectedPaths.style.display = 'none';
+        });
+        pathList.appendChild(pathDiv);
+      });
+      showMessage(`${response.folders.length} Syncthing-Ordner gefunden!`, 'success');
+    } else {
+      // Fallback to suggestions
+      const possiblePaths = [
+        '~/Syncthing',
+        '~/Sync',
+        '~/.config/syncthing',
+        '/home/jens/Syncthing',
+        '/home/jens/Sync'
+      ];
+
+      possiblePaths.forEach(path => {
+        const pathDiv = document.createElement('div');
+        pathDiv.className = 'path-option';
+        pathDiv.textContent = `${path}/thunderbird-tags.json`;
+        pathDiv.addEventListener('click', () => {
+          document.getElementById('syncFilePath').value = `${path}/thunderbird-tags.json`;
+          detectedPaths.style.display = 'none';
+        });
+        pathList.appendChild(pathDiv);
+      });
+
+      showMessage('Keine Syncthing-Ordner gefunden. Hier sind Vorschläge:', 'success');
+    }
+  } catch (error) {
+    console.error('Error detecting Syncthing folders:', error);
+    showMessage('Fehler bei der Ordner-Erkennung. Bitte gib den Pfad manuell ein.', 'error');
+  }
+}
+
+function showMessage(message, type) {
+  const statusMessage = document.getElementById('statusMessage');
   statusMessage.textContent = message;
   statusMessage.className = `status-message ${type}`;
+  statusMessage.style.display = 'block';
+
+  setTimeout(() => {
+    statusMessage.style.display = 'none';
+  }, 5000);
 }
 
-/**
- * Close settings page/window
- */
-function closeSettings() {
-  // If opened as a popup, close the window
-  if (window.opener) {
-    window.close();
-  } else {
-    // Otherwise navigate back to home or previous page
-    window.location.href = 'popup.html';
-  }
-}
-
-/**
- * Load and display logs
- */
-async function loadLogs() {
-  try {
-    const response = await browser.runtime.sendMessage({
-      action: 'getLogs'
-    });
-
-    const logsContainer = document.getElementById('logsContainer');
-    const logsList = document.getElementById('logsList');
-
-    if (response && response.logs && response.logs.length > 0) {
-      logsContainer.style.display = 'block';
-      logsList.innerHTML = response.logs
-        .slice(-50) // Show last 50 logs
-        .map(log => `<div style="margin-bottom: 8px; padding: 5px; border-left: 3px solid #666;">
-          <span style="color: #858585;">[${new Date(log.timestamp).toLocaleString()}]</span>
-          <span style="color: #4ec9b0;">[${log.level}]</span>
-          <span>${log.message}</span>
-        </div>`)
-        .join('');
-    } else {
-      logsContainer.style.display = 'block';
-      logsList.innerHTML = '<div style="color: #858585; text-align: center; padding: 20px;">No logs yet</div>';
-    }
-  } catch (error) {
-    console.error('Failed to load logs:', error);
-    document.getElementById('logsContainer').style.display = 'block';
-    document.getElementById('logsList').innerHTML = `<div style="color: #f48771;">Error loading logs: ${error.message}</div>`;
-  }
-}
-
-/**
- * Clear all logs
- */
-async function clearAllLogs() {
-  if (!confirm('Clear all logs?')) {
-    return;
-  }
-
-  try {
-    await browser.runtime.sendMessage({
-      action: 'clearLogs'
-    });
-
-    document.getElementById('logsList').innerHTML = '<div style="color: #858585; text-align: center; padding: 20px;">Logs cleared</div>';
-  } catch (error) {
-    console.error('Failed to clear logs:', error);
-    document.getElementById('logsList').innerHTML = `<div style="color: #f48771;">Error clearing logs: ${error.message}</div>`;
-  }
+function capitalize(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
 }
