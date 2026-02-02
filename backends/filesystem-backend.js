@@ -124,25 +124,15 @@ class FilesystemBackend {
       // Check if parent directory exists
       const parentExists = await browser.fileIO.exists(parentPath);
       if (!parentExists) {
-        // Try multiple approaches to create the directory
-        try {
-          console.log(`[Filesystem] Parent directory does not exist, attempting to create: ${parentPath}`);
+        console.log(`[Filesystem] Parent directory does not exist: ${parentPath}`);
 
-          // Try using IOUtils if available (Thunderbird 128+)
-          if (typeof IOUtils !== 'undefined') {
-            await IOUtils.makeDirectory(parentPath, { ignoreExisting: true });
-            console.log(`[Filesystem] Parent directory created using IOUtils`);
-          } else if (typeof browser.fileIO !== 'undefined' && browser.fileIO.makeDirectory) {
-            // Try browser.fileIO API
-            await browser.fileIO.makeDirectory(parentPath, { ignoreExisting: true });
-            console.log(`[Filesystem] Parent directory created using fileIO.makeDirectory`);
-          } else {
-            console.warn(`[Filesystem] Cannot create parent directory - no directory creation API available`);
-            console.warn(`[Filesystem] Please create the directory manually: ${parentPath}`);
-          }
+        // Try to create directories recursively
+        try {
+          await this.createDirectoriesRecursive(parentPath);
+          console.log(`[Filesystem] Parent directories created successfully`);
         } catch (dirError) {
           console.warn(`[Filesystem] Directory creation failed: ${dirError.message}`);
-          console.warn(`[Filesystem] Continuing - file may still be writable if parent exists or is on writable mount`);
+          console.warn(`[Filesystem] Attempting to write file anyway...`);
         }
       }
 
@@ -153,6 +143,38 @@ class FilesystemBackend {
     } catch (error) {
       console.error(`[Filesystem] Failed to write tags: ${error.message}`);
       throw error;
+    }
+  }
+
+  /**
+   * Create directories recursively
+   */
+  async createDirectoriesRecursive(dirPath) {
+    const parts = dirPath.split('/').filter(p => p.length > 0);
+    let currentPath = '';
+
+    for (const part of parts) {
+      currentPath += '/' + part;
+
+      try {
+        const exists = await browser.fileIO.exists(currentPath);
+        if (!exists) {
+          console.log(`[Filesystem] Creating directory: ${currentPath}`);
+
+          // Try different APIs
+          if (typeof IOUtils !== 'undefined' && IOUtils.makeDirectory) {
+            await IOUtils.makeDirectory(currentPath, { ignoreExisting: true });
+          } else if (typeof browser.fileIO !== 'undefined' && browser.fileIO.makeDirectory) {
+            await browser.fileIO.makeDirectory(currentPath, { ignoreExisting: true });
+          } else {
+            console.warn(`[Filesystem] No directory creation API available for: ${currentPath}`);
+            throw new Error(`Cannot create directory: ${currentPath}`);
+          }
+        }
+      } catch (error) {
+        console.error(`[Filesystem] Failed to create directory ${currentPath}: ${error.message}`);
+        throw error;
+      }
     }
   }
 
