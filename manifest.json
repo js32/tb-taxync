@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "TB-TaXync",
-  "version": "2.0.0",
+  "version": "2.1.1",
   "description": "Sync Thunderbird tags/keywords across multiple installations via Syncthing or SMB",
-  "author": "Your Name",
+  "author": "Jens",
 
   "browser_specific_settings": {
     "gecko": {
