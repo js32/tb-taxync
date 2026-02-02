@@ -114,6 +114,38 @@ class FilesystemBackend {
       // Convert to JSON string
       const content = JSON.stringify(tagsData, null, 2);
 
+      // Get parent directory
+      const lastSlash = Math.max(
+        this.filePath.lastIndexOf('/'),
+        this.filePath.lastIndexOf('\\')
+      );
+      const parentPath = this.filePath.substring(0, lastSlash);
+
+      // Check if parent directory exists
+      const parentExists = await browser.fileIO.exists(parentPath);
+      if (!parentExists) {
+        // Try multiple approaches to create the directory
+        try {
+          console.log(`[Filesystem] Parent directory does not exist, attempting to create: ${parentPath}`);
+
+          // Try using IOUtils if available (Thunderbird 128+)
+          if (typeof IOUtils !== 'undefined') {
+            await IOUtils.makeDirectory(parentPath, { ignoreExisting: true });
+            console.log(`[Filesystem] Parent directory created using IOUtils`);
+          } else if (typeof browser.fileIO !== 'undefined' && browser.fileIO.makeDirectory) {
+            // Try browser.fileIO API
+            await browser.fileIO.makeDirectory(parentPath, { ignoreExisting: true });
+            console.log(`[Filesystem] Parent directory created using fileIO.makeDirectory`);
+          } else {
+            console.warn(`[Filesystem] Cannot create parent directory - no directory creation API available`);
+            console.warn(`[Filesystem] Please create the directory manually: ${parentPath}`);
+          }
+        } catch (dirError) {
+          console.warn(`[Filesystem] Directory creation failed: ${dirError.message}`);
+          console.warn(`[Filesystem] Continuing - file may still be writable if parent exists or is on writable mount`);
+        }
+      }
+
       // Write to file (creates if doesn't exist)
       await browser.fileIO.writeUTF8(this.filePath, content);
 
