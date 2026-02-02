@@ -190,16 +190,22 @@ function escapeHtml(text) {
 
 async function loadSettings() {
   const defaults = {
-    syncFilePath: '/home/jens/Sync/thunderbird-tags.json',
     syncEnabled: true,
     syncOnChange: true,
     manualSync: true,
-    syncInterval: 5 * 60 * 1000 // Store as milliseconds
+    syncInterval: 5 * 60 * 1000, // Store as milliseconds
+    backendConfig: {
+      type: 'filesystem',
+      filePath: '/home/jens/Sync/thunderbird-tags.json'
+    }
   };
 
   const settings = await browser.storage.local.get(defaults);
 
-  document.getElementById('syncFilePath').value = settings.syncFilePath || '';
+  // Load file path from backendConfig
+  const filePath = settings.backendConfig?.filePath || defaults.backendConfig.filePath;
+  document.getElementById('syncFilePath').value = filePath;
+
   document.getElementById('autoSync').checked = settings.syncEnabled;
   document.getElementById('syncOnChange').checked = settings.syncOnChange;
   document.getElementById('manualSync').checked = settings.manualSync;
@@ -211,13 +217,17 @@ async function loadSettings() {
 
 async function saveSettings() {
   const syncInterval = parseInt(document.getElementById('syncInterval').value) || 5;
+  const filePath = document.getElementById('syncFilePath').value.trim();
 
   const settings = {
-    syncFilePath: document.getElementById('syncFilePath').value.trim(),
     syncEnabled: document.getElementById('autoSync').checked,
     syncOnChange: document.getElementById('syncOnChange').checked,
     manualSync: document.getElementById('manualSync').checked,
-    syncInterval: syncInterval * 60 * 1000 // Convert minutes to milliseconds
+    syncInterval: syncInterval * 60 * 1000, // Convert minutes to milliseconds
+    backendConfig: {
+      type: 'filesystem',
+      filePath: filePath
+    }
   };
 
   try {
@@ -313,13 +323,18 @@ async function detectSyncthingFolders() {
 }
 
 function showMessage(message, type) {
-  const statusMessage = document.getElementById('statusMessage');
-  statusMessage.textContent = message;
-  statusMessage.className = `status-message ${type}`;
-  statusMessage.style.display = 'block';
+  const toast = document.getElementById('statusMessage');
+  toast.textContent = message;
+  toast.className = `toast-notification ${type}`;
+  toast.classList.remove('hide');
+  toast.style.display = 'block';
 
+  // Auto-hide after 5 seconds
   setTimeout(() => {
-    statusMessage.style.display = 'none';
+    toast.classList.add('hide');
+    setTimeout(() => {
+      toast.style.display = 'none';
+    }, 300); // Wait for animation to finish
   }, 5000);
 }
 
