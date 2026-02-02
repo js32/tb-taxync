@@ -23,10 +23,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Building XPI Package
 ```bash
-zip -r thunderbird-sync-labels.xpi \
+zip -r TB-TaXync.xpi \
   manifest.json background.js popup.html popup.js \
   settings.html settings.js logs.html logs.js \
-  backends/*.js sync/*.js icons/*.png
+  backends/*.js sync/*.js icons/*.png experiments/**/*
 ```
 
 ### Icon Generation
