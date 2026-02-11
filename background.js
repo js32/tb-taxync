@@ -31,7 +31,9 @@ browser.runtime.onInstalled.addListener(async (details) => {
         type: 'filesystem',
         filePath: defaultPath
       },
-      tagDefinitions: {}
+      tagDefinitions: {},
+      lastSyncedTags: null, // Snapshot for three-way merge (deletion tracking)
+      tagModificationTimes: {} // Track tag modification timestamps
     });
 
     console.log(`[Install] Default path set: ${defaultPath}`);
@@ -40,7 +42,7 @@ browser.runtime.onInstalled.addListener(async (details) => {
     console.log("Extension updated to version:", browser.runtime.getManifest().version);
 
     // Check if backend is configured, if not, set default
-    const storage = await browser.storage.local.get('backendConfig');
+    const storage = await browser.storage.local.get(['backendConfig', 'lastSyncedTags', 'tagModificationTimes']);
     if (!storage.backendConfig || !storage.backendConfig.filePath) {
       console.log("[Update] No backend configured, setting default...");
       const defaultPath = '/home/jens/Sync/thunderbird-tags.json';
@@ -53,6 +55,16 @@ browser.runtime.onInstalled.addListener(async (details) => {
         }
       });
       console.log(`[Update] Default path set: ${defaultPath}`);
+    }
+
+    // Migration: Add deletion tracking support for existing users
+    if (storage.lastSyncedTags === undefined || storage.tagModificationTimes === undefined) {
+      console.log("[Migration] Adding deletion tracking support (three-way merge)");
+      await browser.storage.local.set({
+        lastSyncedTags: null,
+        tagModificationTimes: {}
+      });
+      console.log("[Migration] Next sync will establish baseline snapshot");
     }
   }
 

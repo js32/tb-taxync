@@ -39,16 +39,33 @@ class TagManager {
         return [];
       }
 
+      // Get stored modification times
+      const storage = await browser.storage.local.get('tagModificationTimes');
+      const modTimes = storage.tagModificationTimes || {};
+
       const tagList = tags.map(tag => {
+        const tagId = tag.key || tag.id;
+
+        // Use stored modification time if available, otherwise current time (new tag)
+        const modified = modTimes[tagId] || Date.now();
+
+        // If this is a new tag (no stored time), save it now
+        if (!modTimes[tagId]) {
+          modTimes[tagId] = modified;
+        }
+
         const mappedTag = {
-          id: tag.key || tag.id,
+          id: tagId,
           name: tag.tag || tag.name,
           color: tag.color || '#000000',
-          modified: Date.now() // We don't have real modification time, use current time
+          modified: modified
         };
         console.log('[TagManager] Mapped tag:', mappedTag);
         return mappedTag;
       });
+
+      // Save any new modification times
+      await browser.storage.local.set({ tagModificationTimes: modTimes });
 
       console.log(`[TagManager] Successfully retrieved ${tagList.length} local tags`);
       return tagList;
@@ -90,6 +107,28 @@ class TagManager {
   }
 
   /**
+   * Delete a tag from Thunderbird
+   * @param {string} tagId - Tag identifier/key to delete
+   * @returns {Promise<void>}
+   */
+  async deleteTag(tagId) {
+    try {
+      console.log(`[TagManager] Deleting tag: ${tagId}`);
+      await browser.messages.tags.delete(tagId);
+      console.log(`[TagManager] Successfully deleted tag: ${tagId}`);
+
+      // Clean up stored modification time
+      const storage = await browser.storage.local.get('tagModificationTimes');
+      const modTimes = storage.tagModificationTimes || {};
+      delete modTimes[tagId];
+      await browser.storage.local.set({ tagModificationTimes: modTimes });
+    } catch (error) {
+      console.error(`[TagManager] Failed to delete tag ${tagId}:`, error.message);
+      throw error;
+    }
+  }
+
+  /**
    * Export current tags to standard format
    * @returns {Promise<Object>} { tags: [...] }
    */
@@ -125,6 +164,10 @@ class TagManager {
     const localTags = await this.getLocalTags();
     const localTagIds = new Set(localTags.map(t => t.id));
 
+    // Get current modification times
+    const storage = await browser.storage.local.get('tagModificationTimes');
+    const modTimes = storage.tagModificationTimes || {};
+
     for (const tag of tagsData.tags) {
       try {
         // Check if tag already exists locally
@@ -136,6 +179,10 @@ class TagManager {
 
         // Create/update the tag
         await this.createOrUpdateTag(tag.id, tag.name, tag.color);
+
+        // Store the modification time from remote
+        modTimes[tag.id] = tag.modified || Date.now();
+
         result.imported++;
       } catch (error) {
         result.errors.push({
@@ -144,6 +191,9 @@ class TagManager {
         });
       }
     }
+
+    // Save updated modification times
+    await browser.storage.local.set({ tagModificationTimes: modTimes });
 
     console.log(`[TagManager] Import complete: ${result.imported} imported, ${result.skipped} skipped, ${result.errors.length} errors`);
     return result;

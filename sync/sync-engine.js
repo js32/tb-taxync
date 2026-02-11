@@ -14,13 +14,14 @@ class SyncEngine {
   /**
    * Perform full sync cycle
    * Pull from backend, merge with local, push back
-   * @returns {Promise<Object>} Sync result { status, imported, exported, errors }
+   * @returns {Promise<Object>} Sync result { status, imported, exported, deleted, errors }
    */
   async sync() {
     const result = {
       status: 'pending',
       imported: 0,
       exported: 0,
+      deleted: 0,
       errors: [],
       conflictsResolved: 0,
       syncTime: new Date().toISOString(),
@@ -36,7 +37,7 @@ class SyncEngine {
         errorHandler.info('SyncEngine', 'Starting sync cycle');
       }
 
-      // Step 1: Get local tags
+      // Step 1: Get local tags (current state)
       let localTags;
       try {
         localTags = await this.tagManager.getLocalTags();
@@ -44,13 +45,7 @@ class SyncEngine {
         throw new Error(`Failed to get local tags: ${error.message}`);
       }
 
-      const localTagsData = {
-        tags: localTags,
-        exportedAt: Date.now(),
-        version: '1.0'
-      };
-
-      // Step 2: Read from backend
+      // Step 2: Read from backend (remote state)
       let remoteTagsData;
       try {
         remoteTagsData = await this.backend.readTags();
@@ -63,10 +58,18 @@ class SyncEngine {
         remoteTagsData = { tags: [] };
       }
 
-      // Step 3: Merge tags
-      const mergeResult = this._mergeTags(localTags, remoteTagsData.tags);
+      // Step 3: Get last synced state from storage
+      const storage = await browser.storage.local.get('lastSyncedTags');
+      const lastSyncedState = storage.lastSyncedTags || null;
 
-      // Step 4: Import new tags from backend
+      // Step 4: Three-way merge
+      const mergeResult = this._threeWayMerge(
+        localTags,
+        remoteTagsData.tags,
+        lastSyncedState ? lastSyncedState.tags : []
+      );
+
+      // Step 5: Apply local changes (import new/updated tags)
       if (mergeResult.tagsToImport.length > 0) {
         try {
           const importResult = await this.tagManager.importTags({
@@ -81,29 +84,46 @@ class SyncEngine {
         }
       }
 
-      // Step 5: Export merged tags to backend
-      const tagsToExport = [
-        ...mergeResult.tagsToImport,
-        ...mergeResult.localOnly,
-        ...mergeResult.resolved
-      ];
-
-      if (tagsToExport.length > 0) {
-        try {
-          await this.backend.writeTags({
-            tags: tagsToExport,
-            syncedAt: Date.now(),
-            version: '1.0'
-          });
-          result.exported = tagsToExport.length;
-        } catch (error) {
-          throw new Error(`Failed to write tags to backend: ${error.message}`);
+      // Step 6: Delete tags that were deleted remotely
+      if (mergeResult.tagsToDeleteLocally.length > 0) {
+        for (const tagId of mergeResult.tagsToDeleteLocally) {
+          try {
+            await this.tagManager.deleteTag(tagId);
+            result.deleted++;
+          } catch (error) {
+            result.errors.push(`Failed to delete tag ${tagId}: ${error.message}`);
+          }
         }
       }
+
+      // Step 7: Export merged tags to backend
+      const tagsToExport = mergeResult.finalTagSet;
+
+      try {
+        await this.backend.writeTags({
+          tags: tagsToExport,
+          syncedAt: Date.now(),
+          version: '1.0'
+        });
+        result.exported = tagsToExport.length;
+      } catch (error) {
+        throw new Error(`Failed to write tags to backend: ${error.message}`);
+      }
+
+      // Step 8: Save the new synchronized state as the snapshot
+      await browser.storage.local.set({
+        lastSyncedTags: {
+          tags: tagsToExport,
+          timestamp: Date.now()
+        }
+      });
 
       result.conflictsResolved = mergeResult.conflicts.length;
       if (mergeResult.conflicts.length > 0 && typeof errorHandler !== 'undefined') {
         errorHandler.info('SyncEngine', `Resolved ${mergeResult.conflicts.length} conflicts`);
+        mergeResult.conflicts.forEach(conflict => {
+          errorHandler.debug('SyncEngine', `Conflict: ${conflict.type} for tag ${conflict.tagId} - ${conflict.reason || 'Newer wins'}`);
+        });
       }
 
       result.status = 'success';
@@ -111,7 +131,7 @@ class SyncEngine {
       result.duration = Date.now() - startTime;
 
       if (typeof errorHandler !== 'undefined') {
-        errorHandler.info('SyncEngine', `Sync complete in ${result.duration}ms - Imported: ${result.imported}, Exported: ${result.exported}`);
+        errorHandler.info('SyncEngine', `Sync complete in ${result.duration}ms - Imported: ${result.imported}, Exported: ${result.exported}, Deleted: ${result.deleted}`);
       } else {
         console.log('[SyncEngine] Sync complete:', result);
       }
@@ -137,58 +157,168 @@ class SyncEngine {
   }
 
   /**
-   * Merge local and remote tags
-   * Resolution strategy: Newer wins (based on modified timestamp)
+   * Three-way merge algorithm
+   * Compares local, remote, and last synced state to detect all changes
+   *
+   * @param {Array} localTags - Current local tags from Thunderbird
+   * @param {Array} remoteTags - Current remote tags from backend
+   * @param {Array} baseTags - Last synced state (snapshot from previous sync)
+   * @returns {Object} Merge result with actions to take
    * @private
    */
-  _mergeTags(localTags, remoteTags) {
+  _threeWayMerge(localTags, remoteTags, baseTags) {
     const result = {
-      tagsToImport: [],     // From remote, not in local
-      localOnly: [],        // In local, not in remote
-      resolved: [],         // Conflicts resolved
-      conflicts: []         // Conflict info for logging
+      tagsToImport: [],           // Import to local Thunderbird
+      tagsToDeleteLocally: [],    // Delete from local Thunderbird
+      finalTagSet: [],            // Final merged set to write to backend
+      conflicts: []               // Conflict information
     };
 
+    // Create maps for efficient lookup
     const localMap = new Map(localTags.map(t => [t.id, t]));
     const remoteMap = new Map(remoteTags.map(t => [t.id, t]));
+    const baseMap = new Map(baseTags.map(t => [t.id, t]));
 
-    // Find remote-only and resolve conflicts
-    for (const [tagId, remoteTag] of remoteMap) {
-      const localTag = localMap.get(tagId);
+    // Get all unique tag IDs across all three states
+    const allTagIds = new Set([
+      ...localMap.keys(),
+      ...remoteMap.keys(),
+      ...baseMap.keys()
+    ]);
 
-      if (!localTag) {
-        // Remote-only tag - import it
-        result.tagsToImport.push(remoteTag);
-      } else {
-        // Tag exists in both - check for conflicts
-        const localModified = localTag.modified || 0;
-        const remoteModified = remoteTag.modified || 0;
+    for (const tagId of allTagIds) {
+      const local = localMap.get(tagId);
+      const remote = remoteMap.get(tagId);
+      const base = baseMap.get(tagId);
 
-        if (localModified !== remoteModified) {
-          // Conflict! Use newer version
-          const winner = localModified > remoteModified ? localTag : remoteTag;
-          result.resolved.push(winner);
+      // Case 1: Tag exists in all three states
+      if (local && remote && base) {
+        const localChanged = this._tagsAreDifferent(local, base);
+        const remoteChanged = this._tagsAreDifferent(remote, base);
+
+        if (!localChanged && !remoteChanged) {
+          // No changes - keep current version
+          result.finalTagSet.push(local);
+        } else if (localChanged && !remoteChanged) {
+          // Only local changed - use local
+          result.finalTagSet.push(local);
+        } else if (!localChanged && remoteChanged) {
+          // Only remote changed - import remote
+          result.tagsToImport.push(remote);
+          result.finalTagSet.push(remote);
+        } else {
+          // Both changed - CONFLICT! Use newer timestamp
+          const winner = local.modified > remote.modified ? local : remote;
+          if (winner === remote) {
+            result.tagsToImport.push(remote);
+          }
+          result.finalTagSet.push(winner);
           result.conflicts.push({
             tagId,
-            local: localTag,
-            remote: remoteTag,
+            type: 'modify-modify',
+            local,
+            remote,
+            base,
             resolution: winner
           });
-        } else {
-          // Same version
-          result.resolved.push(localTag);
         }
       }
-    }
+      // Case 2: Tag exists locally and in base, but NOT remotely
+      else if (local && base && !remote) {
+        const localChanged = this._tagsAreDifferent(local, base);
 
-    // Find local-only tags
-    for (const [tagId, localTag] of localMap) {
-      if (!remoteMap.has(tagId)) {
-        result.localOnly.push(localTag);
+        if (localChanged) {
+          // CONFLICT: Deleted remotely but modified locally
+          // Resolution: Local wins (keep the tag)
+          result.finalTagSet.push(local);
+          result.conflicts.push({
+            tagId,
+            type: 'modify-delete',
+            local,
+            remote: null,
+            base,
+            resolution: local,
+            reason: 'Local modification wins over remote deletion'
+          });
+        } else {
+          // Deleted remotely, unchanged locally - respect deletion
+          result.tagsToDeleteLocally.push(tagId);
+          // Don't include in final set (deleted)
+        }
+      }
+      // Case 3: Tag exists remotely and in base, but NOT locally
+      else if (remote && base && !local) {
+        const remoteChanged = this._tagsAreDifferent(remote, base);
+
+        if (remoteChanged) {
+          // CONFLICT: Deleted locally but modified remotely
+          // Resolution: Remote wins (restore the tag)
+          result.tagsToImport.push(remote);
+          result.finalTagSet.push(remote);
+          result.conflicts.push({
+            tagId,
+            type: 'delete-modify',
+            local: null,
+            remote,
+            base,
+            resolution: remote,
+            reason: 'Remote modification wins over local deletion'
+          });
+        } else {
+          // Deleted locally, unchanged remotely - respect deletion
+          // Don't include in final set (deleted)
+        }
+      }
+      // Case 4: Tag exists locally and remotely, but NOT in base
+      else if (local && remote && !base) {
+        // Added on both sides - check if they're identical
+        if (!this._tagsAreDifferent(local, remote)) {
+          // Same tag created on both sides - no conflict
+          result.finalTagSet.push(local);
+        } else {
+          // Different tags with same ID - use newer
+          const winner = local.modified > remote.modified ? local : remote;
+          if (winner === remote) {
+            result.tagsToImport.push(remote);
+          }
+          result.finalTagSet.push(winner);
+          result.conflicts.push({
+            tagId,
+            type: 'add-add',
+            local,
+            remote,
+            resolution: winner
+          });
+        }
+      }
+      // Case 5: Tag exists ONLY locally (new local tag)
+      else if (local && !remote && !base) {
+        // New local tag - add to final set
+        result.finalTagSet.push(local);
+      }
+      // Case 6: Tag exists ONLY remotely (new remote tag)
+      else if (remote && !local && !base) {
+        // New remote tag - import it
+        result.tagsToImport.push(remote);
+        result.finalTagSet.push(remote);
+      }
+      // Case 7: Tag exists ONLY in base (deleted on both sides)
+      else if (base && !local && !remote) {
+        // Deleted on both sides - no action needed
+        // Don't include in final set
       }
     }
 
     return result;
+  }
+
+  /**
+   * Check if two tags are different
+   * @private
+   */
+  _tagsAreDifferent(tag1, tag2) {
+    return tag1.name !== tag2.name || tag1.color !== tag2.color;
+    // Note: Don't compare modified timestamp here, as it's used for conflict resolution
   }
 
   /**

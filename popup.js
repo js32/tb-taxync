@@ -34,6 +34,7 @@ async function updateStatus() {
 
     const lastSyncTime = document.getElementById('lastSyncTime');
     const syncStatus = document.getElementById('syncStatus');
+    const syncDetails = document.getElementById('syncDetails');
 
     if (storage.lastSync) {
       const date = new Date(storage.lastSync);
@@ -42,12 +43,30 @@ async function updateStatus() {
       if (storage.lastSyncResult?.status === 'success') {
         syncStatus.textContent = '✓ Success';
         syncStatus.style.color = '#155724';
+
+        // Show sync details (imported, exported, deleted)
+        const result = storage.lastSyncResult;
+        const details = [];
+        if (result.imported > 0) details.push(`${result.imported} imported`);
+        if (result.exported > 0) details.push(`${result.exported} exported`);
+        if (result.deleted > 0) details.push(`${result.deleted} deleted`);
+
+        if (details.length > 0) {
+          syncDetails.textContent = details.join(', ');
+          syncDetails.style.color = '#666';
+        } else {
+          syncDetails.textContent = 'No changes';
+          syncDetails.style.color = '#999';
+        }
       } else if (storage.lastSyncResult?.status === 'error') {
         syncStatus.textContent = '✗ Error';
         syncStatus.style.color = '#721c24';
+        syncDetails.textContent = storage.lastSyncResult.errors?.[0] || 'Unknown error';
+        syncDetails.style.color = '#721c24';
       }
     } else {
       lastSyncTime.textContent = 'Not yet synced';
+      syncDetails.textContent = '';
     }
   } catch (error) {
     console.error('Failed to get status:', error);
