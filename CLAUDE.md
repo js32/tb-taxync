@@ -4,9 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Version & Compatibility
 
+- **Current Version:** 2.1.2
 - **Manifest Version:** 3 (modern Thunderbird 128+)
 - **Min Thunderbird:** 128.0 ESR
-- **APIs Used:** IOUtils, PathUtils (Thunderbird 115+ APIs)
+- **APIs Used:** IOUtils, PathUtils, messages.tags.delete() (Thunderbird 115+ APIs)
 - **Backend Support:** Filesystem only (SMB, NFS, Syncthing)
 
 ## Development Workflow
@@ -79,15 +80,18 @@ Background script and popup communicate asynchronously through `browser.storage.
   - Returns accessible paths only
 
 - **Sync Engine** (`sync/sync-engine.js`): Orchestrates the sync process
-  - Pulls remote tags via backend
-  - Merges with local tags (conflict resolution: "newer wins" by timestamp)
-  - Exports merged set back to backend
-  - Returns result: { status, imported, exported, conflictsResolved, errors }
+  - **Three-Way Merge Algorithm**: Compares local, remote, and last synced state
+  - Detects additions, modifications, and deletions on both sides
+  - Conflict resolution: "modification wins over deletion" (conservative)
+  - Stores snapshot of synced state for deletion tracking
+  - Returns result: { status, imported, exported, deleted, conflictsResolved, errors }
 
 - **Tag Manager** (`sync/tag-manager.js`): Interface to Thunderbird's tag system
-  - getLocalTags(): Reads from browser.messages.listTags()
-  - importTags(): Queues tag definitions in storage (Thunderbird WebExt API limitation)
+  - getLocalTags(): Reads from browser.messages.tags.list() with timestamp preservation
+  - importTags(): Creates/updates tags via browser.messages.tags API
+  - deleteTag(): Deletes tags via browser.messages.tags.delete()
   - exportTags(): Converts local tags to JSON format
+  - Preserves modification timestamps in browser.storage.local
 
 - **Background Script** (`background.js`): Lifecycle & message routing
   - Loads backend config on startup
@@ -118,14 +122,56 @@ JSON structure synced between backends:
 ### Storage Schema
 - `syncEnabled`: boolean - auto-sync toggle
 - `lastSync`: timestamp - last successful sync
+- `lastSyncResult`: object - result of last sync (status, imported, exported, deleted, errors)
 - `syncInterval`: milliseconds - periodic sync interval (default: 3600000 = 1hr)
 - `backendConfig`: { type: 'filesystem|dropbox|...', filePath?: string }
 - `tagDefinitions`: Map of tag definitions synced from remote
+- `lastSyncedTags`: { tags: [...], timestamp: number } - snapshot for three-way merge
+- `tagModificationTimes`: { tagId: timestamp } - preserves tag modification times
+
+### Sync Algorithm Details
+
+**Three-Way Merge Strategy** (v2.1.2+):
+Compares three states to detect all changes:
+- **Base**: Last synced snapshot (stored in `lastSyncedTags`)
+- **Local**: Current Thunderbird tags
+- **Remote**: Current backend file
+
+**Decision Matrix**:
+| Local | Remote | Base | Action |
+|-------|--------|------|--------|
+| ✓ | ✓ | ✓ | Both changed? Newer wins |
+| ✓ | ✗ | ✓ | Remote deleted → Local modified? Keep : Delete |
+| ✗ | ✓ | ✓ | Local deleted → Remote modified? Import : Remove |
+| ✓ | ✓ | ✗ | Both added → Same? Keep : Newer wins |
+| ✓ | ✗ | ✗ | New local → Export |
+| ✗ | ✓ | ✗ | New remote → Import |
+| ✗ | ✗ | ✓ | Both deleted → OK |
+
+**Conflict Resolution**:
+- **Modify-Delete conflicts**: Modification wins (conservative approach)
+- **Modify-Modify conflicts**: Newer timestamp wins
+- **Add-Add conflicts**: Newer timestamp wins if different, keep if identical
 
 ### Key Limitations & Workarounds
-1. **Thunderbird WebExtension API**: No direct tag creation API. Solution: Store definitions in storage and provide import instructions to user.
-2. **Filesystem Backend**: Uses nsIFile for file I/O (deprecated but still works). Requires full path to tags.json.
-3. **Conflict Resolution**: "Newer wins" by modified timestamp. No three-way merge.
+1. **Filesystem Backend**: Uses IOUtils API (Thunderbird 128+). Requires full path to tags.json.
+2. **Concurrent Sync**: Multiple devices syncing simultaneously may cause race conditions (last-write-wins).
+3. **Timestamp Accuracy**: Thunderbird API doesn't provide tag modification times, so we track them separately.
+
+## Migration & Upgrades
+
+### Upgrading to v2.1.2+ (Three-Way Merge)
+When users upgrade from earlier versions:
+1. `onInstalled` listener detects missing `lastSyncedTags` and `tagModificationTimes`
+2. Storage is initialized with `lastSyncedTags: null` and `tagModificationTimes: {}`
+3. First sync after upgrade:
+   - Treats as "initial sync" (base state is empty)
+   - All local tags treated as "new local additions" → exported
+   - All remote tags treated as "new remote additions" → imported
+   - No deletions occur (safe migration)
+4. Subsequent syncs use full three-way merge with deletion tracking
+
+**No data loss**: Migration is safe and automatic.
 
 ## Testing & Debugging
 
@@ -134,6 +180,29 @@ JSON structure synced between backends:
 2. Create initial tags.json manually or via sync
 3. Trigger sync via popup button
 4. Check Browser Console for [SyncEngine], [TagManager], [Filesystem] logs
+
+### Testing Deletion Sync (v2.1.2+)
+**Test Case 1: Local Deletion**
+1. Create tag "TestDelete" in Thunderbird
+2. Sync → verify tag appears in backend JSON
+3. Delete "TestDelete" in Thunderbird
+4. Sync → verify tag removed from backend JSON
+5. Check popup: should show "1 deleted"
+
+**Test Case 2: Remote Deletion**
+1. Create tag "TestRemote" in Thunderbird
+2. Sync → verify tag in backend JSON
+3. Manually delete tag from backend JSON file
+4. Sync → verify tag removed from Thunderbird
+5. Check popup: should show "1 deleted"
+
+**Test Case 3: Delete-Modify Conflict**
+1. Create tag "TestConflict" with color #FF0000
+2. Sync
+3. Manually change color in JSON to #00FF00
+4. Delete tag in Thunderbird
+5. Sync → tag should be restored with #00FF00 (modification wins)
+6. Check logs for conflict resolution message
 
 ### Viewing Logs
 1. Click "📋 Logs" button in popup
