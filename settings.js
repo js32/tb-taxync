@@ -196,7 +196,7 @@ async function loadSettings() {
     syncInterval: 5 * 60 * 1000, // Store as milliseconds
     backendConfig: {
       type: 'filesystem',
-      filePath: '/home/jens/Sync/thunderbird-tags.json'
+      filePath: ''
     }
   };
 
@@ -278,7 +278,7 @@ async function detectSyncthingFolders() {
         pathDiv.className = 'path-option';
 
         const strongTag = document.createElement('strong');
-        strongTag.textContent = folder.path;
+        strongTag.textContent = folder.label || folder.path;
         pathDiv.appendChild(strongTag);
 
         const brTag = document.createElement('br');
@@ -294,27 +294,10 @@ async function detectSyncthingFolders() {
         });
         pathList.appendChild(pathDiv);
       });
-      showMessage(`${response.folders.length} Syncthing folders found!`, 'success');
+      showMessage(`${response.folders.length} Syncthing folder(s) found!`, 'success');
     } else {
-      // Fallback to common paths - test which ones exist
-      const possiblePaths = [
-        '/home/jens/Sync/thunderbird-tags.json',
-        '/home/jens/Dokumente/thunderbird-tags.json',
-        '/home/jens/.config/thunderbird-tags.json',
-        '/tmp/thunderbird-tags.json'
-      ];
-
-      // Just suggest the main path we use
-      const pathDiv = document.createElement('div');
-      pathDiv.className = 'path-option';
-      pathDiv.textContent = '/home/jens/Sync/thunderbird-tags.json';
-      pathDiv.addEventListener('click', () => {
-        document.getElementById('syncFilePath').value = '/home/jens/Sync/thunderbird-tags.json';
-        detectedPaths.style.display = 'none';
-      });
-      pathList.appendChild(pathDiv);
-
-      showMessage('Syncthing folder detection not available. Recommended path is shown:', 'success');
+      pathList.innerHTML = '<div style="padding: 10px; color: #666;">No sync folders found. Please enter the path manually.</div>';
+      showMessage('No folders detected. Please enter the path manually.', 'error');
     }
   } catch (error) {
     console.error('Error detecting Syncthing folders:', error);

@@ -274,6 +274,22 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
         sendResponse({ success: true });
       }
 
+      else if (request.action === 'detectSyncthing') {
+        try {
+          const discovery = new PathDiscovery();
+          const accessible = await discovery.discoverPaths();
+          const folders = accessible.map(entry => ({
+            path: entry.path,
+            label: entry.label,
+            type: entry.type,
+            suggestedFile: discovery.suggestTagsPath(entry.path)
+          }));
+          sendResponse({ success: true, folders });
+        } catch (err) {
+          sendResponse({ success: false, folders: [], error: err.message });
+        }
+      }
+
       else if (request.action === 'testPath') {
         const testBackend = new FilesystemBackend({ filePath: request.path });
         const connected = await testBackend.testConnection();
