@@ -6,7 +6,7 @@
 // Note: In real setup, use proper module loading
 
 let syncEngine = null;
-let syncScheduler = null;
+const SYNC_ALARM_NAME = 'periodic-sync';
 const SYNC_TIMEOUT = 30000; // 30 seconds timeout for sync operations
 
 // Default to filesystem backend for actual file syncing
@@ -290,6 +290,17 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
       }
 
+      else if (request.action === 'reloadSettings') {
+        await initializeSyncEngine();
+        const s = await browser.storage.local.get('syncEnabled');
+        if (s.syncEnabled) {
+          await startSyncScheduler();
+        } else {
+          stopSyncScheduler();
+        }
+        sendResponse({ success: true });
+      }
+
       else if (request.action === 'testPath') {
         const testBackend = new FilesystemBackend({ filePath: request.path });
         const connected = await testBackend.testConnection();
@@ -357,11 +368,10 @@ async function getExtensionStatus() {
 }
 
 /**
- * Start periodic sync scheduler
+ * Start periodic sync scheduler using browser.alarms (survives background script restarts)
  */
 async function startSyncScheduler() {
   try {
-    // Stop existing scheduler if running
     stopSyncScheduler();
 
     const storage = await browser.storage.local.get(['syncInterval', 'syncEnabled']);
@@ -373,25 +383,18 @@ async function startSyncScheduler() {
       return;
     }
 
-    console.log(`[Background] Sync scheduler starting with interval: ${syncInterval}ms`);
+    const periodInMinutes = syncInterval / 60000;
+    console.log(`[Background] Sync scheduler starting with interval: ${periodInMinutes} minutes`);
 
-    // Perform initial sync
+    // Perform initial sync immediately
     await performSync().catch(err => {
       console.error('[Background] Initial sync failed:', err.message);
     });
 
-    // Schedule periodic syncs
-    syncScheduler = setInterval(async () => {
-      console.log('[Background] Running scheduled sync...');
-      try {
-        await performSync();
-      } catch (error) {
-        console.error('[Background] Scheduled sync failed:', error.message);
-        // Continue with next interval even if sync fails
-      }
-    }, syncInterval);
+    // Schedule periodic syncs via alarms (persists across background script restarts)
+    browser.alarms.create(SYNC_ALARM_NAME, { periodInMinutes });
 
-    console.log('[Background] Sync scheduler started');
+    console.log('[Background] Sync scheduler started (alarms)');
   } catch (error) {
     console.error('[Background] Failed to start sync scheduler:', error.message);
   }
@@ -401,12 +404,21 @@ async function startSyncScheduler() {
  * Stop periodic sync scheduler
  */
 function stopSyncScheduler() {
-  if (syncScheduler) {
-    clearInterval(syncScheduler);
-    syncScheduler = null;
-    console.log('[Background] Sync scheduler stopped');
-  }
+  browser.alarms.clear(SYNC_ALARM_NAME);
+  console.log('[Background] Sync scheduler stopped');
 }
+
+// Handle alarm firing
+browser.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name === SYNC_ALARM_NAME) {
+    console.log('[Background] Running scheduled sync (alarm)...');
+    try {
+      await performSync();
+    } catch (error) {
+      console.error('[Background] Scheduled sync failed:', error.message);
+    }
+  }
+});
 
 /**
  * Listen for storage changes to trigger actions

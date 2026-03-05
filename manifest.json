@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TB-TaXync",
-  "version": "2.1.3",
+  "version": "2.1.4",
   "description": "Sync Thunderbird tags/keywords across multiple installations via Syncthing or SMB",
   "author": "Jens",
 
@@ -40,6 +40,7 @@
     "messagesRead",
     "accountsRead",
     "storage",
+    "alarms",
     "messagesTagsList",
     "messagesTags"
   ],
