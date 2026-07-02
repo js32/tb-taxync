@@ -99,15 +99,28 @@ class SyncEngine {
       // Step 7: Export merged tags to backend
       const tagsToExport = mergeResult.finalTagSet;
 
-      try {
-        await this.backend.writeTags({
-          tags: tagsToExport,
-          syncedAt: Date.now(),
-          version: '1.0'
-        });
-        result.exported = tagsToExport.length;
-      } catch (error) {
-        throw new Error(`Failed to write tags to backend: ${error.message}`);
+      // Skip the write when the merged result already matches the remote file.
+      // This stops two idle installations from rewriting the same file every
+      // cycle, which is what triggers Syncthing .sync-conflict files.
+      if (this._tagSetsEqual(tagsToExport, remoteTagsData.tags)) {
+        result.exported = 0;
+        result.skippedWrite = true;
+        if (typeof errorHandler !== 'undefined') {
+          errorHandler.debug('SyncEngine', 'Remote already up to date, skipping write');
+        } else {
+          console.log('[SyncEngine] Remote already up to date, skipping write');
+        }
+      } else {
+        try {
+          await this.backend.writeTags({
+            tags: tagsToExport,
+            syncedAt: Date.now(),
+            version: '1.0'
+          });
+          result.exported = tagsToExport.length;
+        } catch (error) {
+          throw new Error(`Failed to write tags to backend: ${error.message}`);
+        }
       }
 
       // Step 8: Save the new synchronized state as the snapshot
@@ -154,6 +167,25 @@ class SyncEngine {
 
       return result;
     }
+  }
+
+  /**
+   * Compare two tag sets for equality (order-independent).
+   * Used to decide whether a backend write is actually necessary.
+   *
+   * @param {Array} a - First tag set
+   * @param {Array} b - Second tag set
+   * @returns {boolean} True if both sets contain the same tags
+   * @private
+   */
+  _tagSetsEqual(a = [], b = []) {
+    if (a.length !== b.length) return false;
+    const norm = (tags) => tags
+      .map(t => `${t.id} ${t.name} ${t.color}`)
+      .sort();
+    const na = norm(a);
+    const nb = norm(b);
+    return na.every((val, i) => val === nb[i]);
   }
 
   /**
