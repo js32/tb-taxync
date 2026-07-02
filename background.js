@@ -9,6 +9,12 @@ let syncEngine = null;
 const SYNC_ALARM_NAME = 'periodic-sync';
 const SYNC_TIMEOUT = 30000; // 30 seconds timeout for sync operations
 
+// MV3 event pages get terminated after ~30s idle, and Thunderbird 128 does NOT
+// wake a terminated page when browser.alarms fire. To make auto-sync reliable we
+// keep the page alive with a lightweight API ping while sync is enabled.
+const KEEPALIVE_INTERVAL_MS = 20000;
+let keepAliveTimer = null;
+
 // Default to filesystem backend for actual file syncing
 const DEFAULT_BACKEND_TYPE = 'filesystem';
 
@@ -327,6 +333,13 @@ async function performSync() {
   try {
     console.log('[Background] Starting sync...');
 
+    // Lazy init: when an alarm wakes a suspended event page, the startup
+    // IIFE that sets syncEngine may not have finished yet. Ensure it's ready.
+    if (!syncEngine) {
+      console.log('[Background] Sync engine not ready, initializing on demand...');
+      await initializeSyncEngine();
+    }
+
     if (!syncEngine) {
       throw new Error('Sync engine not initialized. Please configure backend in settings.');
     }
@@ -386,6 +399,9 @@ async function startSyncScheduler() {
     const periodInMinutes = syncInterval / 60000;
     console.log(`[Background] Sync scheduler starting with interval: ${periodInMinutes} minutes`);
 
+    // Keep the event page awake so the alarm actually fires (see KEEPALIVE note)
+    startKeepAlive();
+
     // Perform initial sync immediately
     await performSync().catch(err => {
       console.error('[Background] Initial sync failed:', err.message);
@@ -405,7 +421,28 @@ async function startSyncScheduler() {
  */
 function stopSyncScheduler() {
   browser.alarms.clear(SYNC_ALARM_NAME);
+  stopKeepAlive();
   console.log('[Background] Sync scheduler stopped');
+}
+
+/**
+ * Keep the MV3 event page alive so alarms fire reliably.
+ * A trivial API call every KEEPALIVE_INTERVAL_MS resets the idle-shutdown timer.
+ */
+function startKeepAlive() {
+  if (keepAliveTimer !== null) return;
+  keepAliveTimer = setInterval(() => {
+    browser.runtime.getPlatformInfo().catch(() => {});
+  }, KEEPALIVE_INTERVAL_MS);
+  console.log('[Background] Keep-alive started (event page kept awake)');
+}
+
+function stopKeepAlive() {
+  if (keepAliveTimer !== null) {
+    clearInterval(keepAliveTimer);
+    keepAliveTimer = null;
+    console.log('[Background] Keep-alive stopped');
+  }
 }
 
 // Handle alarm firing
