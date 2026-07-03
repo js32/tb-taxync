@@ -83,6 +83,39 @@
       color: #666;
       margin: 10px 0;
     }
+
+    @media (prefers-color-scheme: dark) {
+      body {
+        background-color: #2a2a2e;
+        color: #f9f9fa;
+      }
+
+      .status {
+        background-color: #38383d;
+      }
+
+      .status-value {
+        color: #b1b1b3;
+      }
+
+      .status.success {
+        background-color: #1d3b29;
+        color: #87d7a3;
+      }
+
+      .status.error {
+        background-color: #4a2327;
+        color: #f4a8ae;
+      }
+
+      .settings-link {
+        color: #45a1ff;
+      }
+
+      #syncingMessage {
+        color: #b1b1b3;
+      }
+    }
   </style>
 </head>
 <body>

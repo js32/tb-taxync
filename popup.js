@@ -1,5 +1,5 @@
 /**
- * Popup script for Thunderbird Sync Labels extension
+ * Popup script for TB-TaXync
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -30,42 +30,53 @@ function setupEventListeners() {
  */
 async function updateStatus() {
   try {
-    const storage = await browser.storage.local.get(['lastSync', 'lastSyncResult']);
+    const storage = await browser.storage.local.get(['lastSync', 'lastSyncResult', 'backendConfig']);
 
+    const statusContainer = document.getElementById('statusContainer');
     const lastSyncTime = document.getElementById('lastSyncTime');
     const syncStatus = document.getElementById('syncStatus');
     const syncDetails = document.getElementById('syncDetails');
+    const syncButton = document.getElementById('syncButton');
+
+    // Backend not configured yet: point the user to the settings
+    if (!storage.backendConfig?.filePath) {
+      statusContainer.className = 'status';
+      lastSyncTime.textContent = 'Not configured';
+      syncStatus.textContent = '';
+      syncDetails.textContent = 'Set a sync file path in the settings first.';
+      syncButton.disabled = true;
+      return;
+    }
+    syncButton.disabled = false;
 
     if (storage.lastSync) {
       const date = new Date(storage.lastSync);
-      lastSyncTime.textContent = date.toLocaleString('en-US');
-
-      if (storage.lastSyncResult?.status === 'success') {
-        syncStatus.textContent = '✓ Success';
-        syncStatus.style.color = '#155724';
-
-        // Show sync details (imported, exported, deleted)
-        const result = storage.lastSyncResult;
-        const details = [];
-        if (result.imported > 0) details.push(`${result.imported} imported`);
-        if (result.exported > 0) details.push(`${result.exported} exported`);
-        if (result.deleted > 0) details.push(`${result.deleted} deleted`);
-
-        if (details.length > 0) {
-          syncDetails.textContent = details.join(', ');
-          syncDetails.style.color = '#666';
-        } else {
-          syncDetails.textContent = 'No changes';
-          syncDetails.style.color = '#999';
-        }
-      } else if (storage.lastSyncResult?.status === 'error') {
-        syncStatus.textContent = '✗ Error';
-        syncStatus.style.color = '#721c24';
-        syncDetails.textContent = storage.lastSyncResult.errors?.[0] || 'Unknown error';
-        syncDetails.style.color = '#721c24';
-      }
+      lastSyncTime.textContent = date.toLocaleString();
     } else {
       lastSyncTime.textContent = 'Not yet synced';
+    }
+
+    if (storage.lastSyncResult?.status === 'success') {
+      statusContainer.className = 'status success';
+      syncStatus.textContent = '✓ Success';
+
+      // Show sync details (imported, exported, deleted)
+      const result = storage.lastSyncResult;
+      const details = [];
+      if (result.imported > 0) details.push(`${result.imported} imported`);
+      if (result.exported > 0) details.push(`${result.exported} exported`);
+      if (result.deleted > 0) details.push(`${result.deleted} deleted`);
+
+      syncDetails.textContent = details.length > 0 ? details.join(', ') : 'No changes';
+    } else if (storage.lastSyncResult?.status === 'error') {
+      statusContainer.className = 'status error';
+      syncStatus.textContent = '✗ Error';
+      syncDetails.textContent = storage.lastSyncResult.userMessage
+        || storage.lastSyncResult.errors?.[0]
+        || 'Unknown error';
+    } else {
+      statusContainer.className = 'status';
+      syncStatus.textContent = '';
       syncDetails.textContent = '';
     }
   } catch (error) {
@@ -84,31 +95,14 @@ async function performSync() {
   syncingMessage.style.display = 'block';
 
   try {
-    const response = await browser.runtime.sendMessage({
-      action: 'performSync'
-    });
-
-    if (response.success) {
-      const result = response.result;
-
-      if (result.status === 'success') {
-        console.log('Sync successful!', result);
-      } else {
-        console.error('Sync failed:', result);
-      }
-    } else {
-      console.error('Sync error:', response.error);
-    }
-
-    // Update status after sync
-    setTimeout(() => {
-      updateStatus();
-      syncingMessage.style.display = 'none';
-    }, 1000);
+    await browser.runtime.sendMessage({ action: 'performSync' });
   } catch (error) {
     console.error('Sync error:', error);
-    syncingMessage.style.display = 'none';
   } finally {
+    // The background script stores the outcome (success or error) in
+    // lastSyncResult, so refreshing the status shows it either way.
+    syncingMessage.style.display = 'none';
     syncButton.disabled = false;
+    await updateStatus();
   }
 }

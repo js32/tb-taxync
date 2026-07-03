@@ -13,11 +13,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Detect Syncthing folders button handler
   document.getElementById('detectSyncthingBtn').addEventListener('click', detectSyncthingFolders);
-
-  // Browse button handler (placeholder)
-  document.getElementById('browseBtn').addEventListener('click', () => {
-    showMessage('Note: File selection is currently only possible manually via text input.', 'error');
-  });
 });
 
 /**
@@ -91,7 +86,7 @@ async function loadAndDisplayLogs() {
         const entry = document.createElement('div');
         entry.className = `log-entry ${log.level || 'INFO'}`;
 
-        const timestamp = new Date(log.timestamp).toLocaleString('en-US');
+        const timestamp = new Date(log.timestamp).toLocaleString();
 
         const timestampSpan = document.createElement('span');
         timestampSpan.className = 'log-timestamp';
@@ -134,7 +129,7 @@ function updateLogStats(logs) {
   const lastSyncLog = logs.find(l => l.message.includes('sync complete') || l.message.includes('Sync complete'));
   if (lastSyncLog) {
     const date = new Date(lastSyncLog.timestamp);
-    document.getElementById('lastSync').textContent = date.toLocaleString('de-DE');
+    document.getElementById('lastSync').textContent = date.toLocaleString();
   }
 }
 
@@ -179,21 +174,10 @@ async function clearLogs() {
   }
 }
 
-/**
- * Escape HTML to prevent XSS
- */
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
 async function loadSettings() {
   const defaults = {
-    syncEnabled: true,
-    syncOnChange: true,
-    manualSync: true,
-    syncInterval: 5 * 60 * 1000, // Store as milliseconds
+    syncEnabled: false,
+    syncInterval: 60 * 60 * 1000, // Store as milliseconds (default 1 hour)
     backendConfig: {
       type: 'filesystem',
       filePath: ''
@@ -207,22 +191,20 @@ async function loadSettings() {
   document.getElementById('syncFilePath').value = filePath;
 
   document.getElementById('autoSync').checked = settings.syncEnabled;
-  document.getElementById('syncOnChange').checked = settings.syncOnChange;
-  document.getElementById('manualSync').checked = settings.manualSync;
 
-  // Convert milliseconds back to minutes for display
-  const syncIntervalMinutes = settings.syncInterval ? Math.round(settings.syncInterval / (60 * 1000)) : 5;
+  // Convert milliseconds back to minutes for display (0 = disabled)
+  const syncIntervalMinutes = Math.round((settings.syncInterval ?? defaults.syncInterval) / (60 * 1000));
   document.getElementById('syncInterval').value = syncIntervalMinutes;
 }
 
 async function saveSettings() {
-  const syncInterval = parseInt(document.getElementById('syncInterval').value) || 5;
+  const intervalMinutes = parseInt(document.getElementById('syncInterval').value, 10);
+  // 0 is valid (= disabled); fall back to 60 only for empty/invalid input
+  const syncInterval = Number.isNaN(intervalMinutes) || intervalMinutes < 0 ? 60 : intervalMinutes;
   const filePath = document.getElementById('syncFilePath').value.trim();
 
   const settings = {
     syncEnabled: document.getElementById('autoSync').checked,
-    syncOnChange: document.getElementById('syncOnChange').checked,
-    manualSync: document.getElementById('manualSync').checked,
     syncInterval: syncInterval * 60 * 1000, // Convert minutes to milliseconds
     backendConfig: {
       type: 'filesystem',
@@ -231,18 +213,17 @@ async function saveSettings() {
   };
 
   try {
+    // The background script picks this up via its storage.onChanged listener
+    // (re-initializes the sync engine and restarts the scheduler).
     await browser.storage.local.set(settings);
     showMessage('Settings saved successfully!', 'success');
-
-    // Notify background script to reload settings
-    await browser.runtime.sendMessage({ action: 'reloadSettings' });
   } catch (error) {
     showMessage(`Error saving settings: ${error.message}`, 'error');
   }
 }
 
 async function testSync() {
-  showMessage('Testing synchronization...', 'success');
+  showMessage('Testing synchronization...', 'info');
 
   try {
     const response = await browser.runtime.sendMessage({ action: 'performSync' });
@@ -319,8 +300,4 @@ function showMessage(message, type) {
       toast.style.display = 'none';
     }, 300); // Wait for animation to finish
   }, 5000);
-}
-
-function capitalize(str) {
-  return str.charAt(0).toUpperCase() + str.slice(1);
 }

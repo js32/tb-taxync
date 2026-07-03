@@ -2,6 +2,11 @@
  * Tag Manager
  * Handles reading and writing tags from Thunderbird's tag system
  * Uses browser.messages.tags API (Thunderbird built-in)
+ *
+ * Modification tracking: Thunderbird's API provides no modification times,
+ * so we store a signature (name, color, modified) per tag in
+ * browser.storage.local under `tagModificationTimes`. When a tag's name or
+ * color differs from the stored signature, the modification time is bumped.
  */
 
 class TagManager {
@@ -14,65 +19,76 @@ class TagManager {
    * @returns {Promise<void>}
    */
   async init() {
-    try {
-      console.log('[TagManager] Initialized with messages.tags API');
-    } catch (error) {
-      console.error('[TagManager] Failed to initialize:', error.message);
-      throw error;
-    }
+    console.log('[TagManager] Initialized with messages.tags API');
+  }
+
+  /**
+   * Load the stored tag signatures, migrating legacy bare-timestamp entries
+   * (pre-v2.2.0 stored just a number per tag) to the signature format.
+   * @private
+   */
+  async _getStoredSignatures() {
+    const storage = await browser.storage.local.get('tagModificationTimes');
+    return storage.tagModificationTimes || {};
+  }
+
+  async _saveStoredSignatures(signatures) {
+    await browser.storage.local.set({ tagModificationTimes: signatures });
   }
 
   /**
    * Get all tags currently defined in Thunderbird
    * @returns {Promise<Array>} Array of tag objects {id, name, color, modified}
+   * @throws {Error} If the tags API fails - callers must NOT treat this as
+   *                 "no tags", that would be interpreted as mass deletion.
    */
   async getLocalTags() {
-    try {
-      console.log('[TagManager] Getting local tags via messages.tags.list()...');
+    const tags = await browser.messages.tags.list();
 
-      // Use the official messages.tags.list() API
-      const tags = await browser.messages.tags.list();
-      console.log('[TagManager] Raw tags from API:', JSON.stringify(tags, null, 2));
+    if (!Array.isArray(tags)) {
+      throw new Error(`Tags API did not return an array: ${typeof tags}`);
+    }
 
-      if (!Array.isArray(tags)) {
-        console.warn('[TagManager] Tags API did not return an array:', typeof tags);
-        return [];
+    const signatures = await this._getStoredSignatures();
+    let dirty = false;
+    const now = Date.now();
+
+    const tagList = tags.map(tag => {
+      const tagId = tag.key || tag.id;
+      const name = tag.tag || tag.name;
+      const color = (tag.color || '#000000').toLowerCase();
+
+      let entry = signatures[tagId];
+
+      // Legacy format (bare timestamp): adopt current name/color without bumping
+      if (typeof entry === 'number') {
+        entry = { name, color, modified: entry };
+        signatures[tagId] = entry;
+        dirty = true;
       }
 
-      // Get stored modification times
-      const storage = await browser.storage.local.get('tagModificationTimes');
-      const modTimes = storage.tagModificationTimes || {};
+      if (!entry) {
+        // New tag - first time we see it
+        entry = { name, color, modified: now };
+        signatures[tagId] = entry;
+        dirty = true;
+      } else if (entry.name !== name || entry.color !== color) {
+        // Tag was modified in Thunderbird since we last saw it
+        entry.name = name;
+        entry.color = color;
+        entry.modified = now;
+        dirty = true;
+      }
 
-      const tagList = tags.map(tag => {
-        const tagId = tag.key || tag.id;
+      return { id: tagId, name, color, modified: entry.modified };
+    });
 
-        // Use stored modification time if available, otherwise current time (new tag)
-        const modified = modTimes[tagId] || Date.now();
-
-        // If this is a new tag (no stored time), save it now
-        if (!modTimes[tagId]) {
-          modTimes[tagId] = modified;
-        }
-
-        const mappedTag = {
-          id: tagId,
-          name: tag.tag || tag.name,
-          color: tag.color || '#000000',
-          modified: modified
-        };
-        console.log('[TagManager] Mapped tag:', mappedTag);
-        return mappedTag;
-      });
-
-      // Save any new modification times
-      await browser.storage.local.set({ tagModificationTimes: modTimes });
-
-      console.log(`[TagManager] Successfully retrieved ${tagList.length} local tags`);
-      return tagList;
-    } catch (error) {
-      console.error('[TagManager] Failed to get local tags:', error.message, error.stack);
-      return [];
+    if (dirty) {
+      await this._saveStoredSignatures(signatures);
     }
+
+    console.log(`[TagManager] Retrieved ${tagList.length} local tags`);
+    return tagList;
   }
 
   /**
@@ -84,19 +100,16 @@ class TagManager {
    */
   async createOrUpdateTag(tagId, name, color) {
     try {
-      // Check if tag already exists
       const existingTags = await browser.messages.tags.list();
-      const existingTag = existingTags.find(t => t.key === tagId);
+      const existingTag = existingTags.find(t => (t.key || t.id) === tagId);
 
       if (existingTag) {
-        // Update existing tag
         console.log(`[TagManager] Updating tag: ${tagId} -> ${name} (${color})`);
         await browser.messages.tags.update(tagId, {
           tag: name,
           color: color
         });
       } else {
-        // Create new tag
         console.log(`[TagManager] Creating tag: ${tagId} -> ${name} (${color})`);
         await browser.messages.tags.create(tagId, name, color);
       }
@@ -115,13 +128,11 @@ class TagManager {
     try {
       console.log(`[TagManager] Deleting tag: ${tagId}`);
       await browser.messages.tags.delete(tagId);
-      console.log(`[TagManager] Successfully deleted tag: ${tagId}`);
 
-      // Clean up stored modification time
-      const storage = await browser.storage.local.get('tagModificationTimes');
-      const modTimes = storage.tagModificationTimes || {};
-      delete modTimes[tagId];
-      await browser.storage.local.set({ tagModificationTimes: modTimes });
+      // Clean up stored signature
+      const signatures = await this._getStoredSignatures();
+      delete signatures[tagId];
+      await this._saveStoredSignatures(signatures);
     } catch (error) {
       console.error(`[TagManager] Failed to delete tag ${tagId}:`, error.message);
       throw error;
@@ -145,7 +156,10 @@ class TagManager {
   }
 
   /**
-   * Import tags from standard format
+   * Import tags from standard format.
+   * Existing tags are UPDATED (name/color), not skipped - the sync engine
+   * only sends tags that actually need to be applied locally.
+   *
    * @param {Object} tagsData - { tags: [...] }
    * @returns {Promise<Object>} { imported: number, skipped: number, errors: [] }
    */
@@ -162,26 +176,32 @@ class TagManager {
     }
 
     const localTags = await this.getLocalTags();
-    const localTagIds = new Set(localTags.map(t => t.id));
+    const localTagsById = new Map(localTags.map(t => [t.id, t]));
 
-    // Get current modification times
-    const storage = await browser.storage.local.get('tagModificationTimes');
-    const modTimes = storage.tagModificationTimes || {};
+    const signatures = await this._getStoredSignatures();
+    let signaturesDirty = false;
 
     for (const tag of tagsData.tags) {
       try {
-        // Check if tag already exists locally
-        if (localTagIds.has(tag.id)) {
+        const color = (tag.color || '#000000').toLowerCase();
+        const existing = localTagsById.get(tag.id);
+
+        // Skip only if the local tag is already identical
+        if (existing && existing.name === tag.name && existing.color === color) {
           result.skipped++;
-          console.log(`[TagManager] Tag already exists locally: ${tag.id}`);
           continue;
         }
 
-        // Create/update the tag
-        await this.createOrUpdateTag(tag.id, tag.name, tag.color);
+        await this.createOrUpdateTag(tag.id, tag.name, tag.color || '#000000');
 
-        // Store the modification time from remote
-        modTimes[tag.id] = tag.modified || Date.now();
+        // Store the remote signature so the next getLocalTags() does not
+        // misinterpret the import as a fresh local modification
+        signatures[tag.id] = {
+          name: tag.name,
+          color: color,
+          modified: tag.modified || Date.now()
+        };
+        signaturesDirty = true;
 
         result.imported++;
       } catch (error) {
@@ -192,8 +212,9 @@ class TagManager {
       }
     }
 
-    // Save updated modification times
-    await browser.storage.local.set({ tagModificationTimes: modTimes });
+    if (signaturesDirty) {
+      await this._saveStoredSignatures(signatures);
+    }
 
     console.log(`[TagManager] Import complete: ${result.imported} imported, ${result.skipped} skipped, ${result.errors.length} errors`);
     return result;

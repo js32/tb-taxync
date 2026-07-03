@@ -93,8 +93,8 @@ tb-taxync/
 # 2. XPI bauen
 zip -r thunderbird-sync-labels.xpi \
   manifest.json background.js popup.html popup.js \
-  settings.html settings.js logs.html logs.js \
-  backends/*.js sync/*.js icons/*.png
+  settings.html settings.js \
+  backends/*.js sync/*.js icons/*.png experiments/**/*
 
 # 3. In Thunderbird neu laden
 # Tools → Developer Tools → Browser Console

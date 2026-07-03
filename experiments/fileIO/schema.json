@@ -31,7 +31,7 @@
       {
         "name": "writeUTF8",
         "type": "function",
-        "description": "Write UTF-8 content to file",
+        "description": "Write UTF-8 content to file (atomic, creates parent directories)",
         "async": true,
         "parameters": [
           {
@@ -58,44 +58,6 @@
             "description": "Absolute path to file"
           }
         ]
-      },
-      {
-        "name": "getParent",
-        "type": "function",
-        "description": "Get parent directory path",
-        "async": false,
-        "parameters": [
-          {
-            "name": "path",
-            "type": "string",
-            "description": "File path"
-          }
-        ]
-      },
-      {
-        "name": "join",
-        "type": "function",
-        "description": "Join path components",
-        "async": false,
-        "parameters": [
-          {
-            "name": "base",
-            "type": "string",
-            "description": "Base path"
-          },
-          {
-            "name": "component",
-            "type": "string",
-            "description": "Path component to append"
-          }
-        ]
-      },
-      {
-        "name": "getProfileDir",
-        "type": "function",
-        "description": "Get Thunderbird profile directory",
-        "async": false,
-        "parameters": []
       }
     ]
   }

@@ -23,44 +23,37 @@ browser.runtime.onInstalled.addListener(async (details) => {
   console.log("Extension installed:", details);
 
   if (details.reason === "install") {
-    console.log("First time installation - setting default backend...");
+    console.log("First time installation - initializing default settings...");
 
-    // Get default path suggestion
-    const defaultPath = '/home/jens/Sync/thunderbird-tags.json';
-
-    // Initialize default settings with filesystem backend
+    // No default path: the user must configure it in settings.
     await browser.storage.local.set({
       syncEnabled: false, // Disabled until user configures
       lastSync: null,
       syncInterval: 3600000, // 1 hour default
       backendConfig: {
         type: 'filesystem',
-        filePath: defaultPath
+        filePath: ''
       },
       tagDefinitions: {},
       lastSyncedTags: null, // Snapshot for three-way merge (deletion tracking)
       tagModificationTimes: {} // Track tag modification timestamps
     });
 
-    console.log(`[Install] Default path set: ${defaultPath}`);
     console.log('[Install] Configure path in settings to enable syncing');
   } else if (details.reason === "update") {
     console.log("Extension updated to version:", browser.runtime.getManifest().version);
 
-    // Check if backend is configured, if not, set default
+    // Ensure a backendConfig object exists (path stays empty until configured)
     const storage = await browser.storage.local.get(['backendConfig', 'lastSyncedTags', 'tagModificationTimes']);
-    if (!storage.backendConfig || !storage.backendConfig.filePath) {
-      console.log("[Update] No backend configured, setting default...");
-      const defaultPath = '/home/jens/Sync/thunderbird-tags.json';
+    if (!storage.backendConfig) {
       await browser.storage.local.set({
         syncEnabled: false,
         syncInterval: 3600000,
         backendConfig: {
           type: 'filesystem',
-          filePath: defaultPath
+          filePath: ''
         }
       });
-      console.log(`[Update] Default path set: ${defaultPath}`);
     }
 
     // Migration: Add deletion tracking support for existing users
@@ -83,77 +76,6 @@ browser.runtime.onInstalled.addListener(async (details) => {
     await startSyncScheduler();
   }
 });
-
-/**
- * Get default tags path for first install
- */
-async function getDefaultTagsPath() {
-  const platform = navigator.platform.toLowerCase();
-
-  // Get username from profile path
-  let username = null;
-
-  try {
-    if (typeof browser.fileIO !== 'undefined' && browser.fileIO.getProfileDir) {
-      const profileDir = browser.fileIO.getProfileDir();
-      console.log('[AutoConfig] Profile directory:', profileDir);
-
-      if (profileDir) {
-        // Extract username from profile path
-        const match = profileDir.match(/\/home\/([^\/]+)/) || profileDir.match(/\/Users\/([^\/]+)/) || profileDir.match(/Users\\([^\\]+)/);
-        if (match && match[1]) {
-          username = match[1];
-          console.log('[AutoConfig] Detected username from profile:', username);
-        }
-      }
-    }
-  } catch (error) {
-    console.warn('[AutoConfig] Could not get profile directory:', error.message);
-  }
-
-  // Fallback: try to read environment or use common usernames
-  if (!username) {
-    console.log('[AutoConfig] Falling back to manual username detection');
-
-    // For Linux, check if /home/jens exists (common development setup)
-    if (platform.includes('linux')) {
-      try {
-        // Try common Linux usernames in order
-        const commonUsers = ['jens', 'user', 'ubuntu', 'debian'];
-        for (const testUser of commonUsers) {
-          const testPath = `/home/${testUser}`;
-          const exists = await browser.fileIO.exists(testPath);
-          if (exists) {
-            username = testUser;
-            console.log('[AutoConfig] Found existing home directory:', testPath);
-            break;
-          }
-        }
-      } catch (error) {
-        console.warn('[AutoConfig] Could not check home directories:', error.message);
-      }
-    }
-  }
-
-  // Final fallback
-  if (!username) {
-    username = 'user';
-    console.log('[AutoConfig] Using fallback username: user');
-  }
-
-  // Return platform-specific home directory path
-  let defaultPath;
-  if (platform.includes('linux')) {
-    defaultPath = `/home/${username}/Sync/thunderbird-tags.json`;
-  } else if (platform.includes('mac')) {
-    defaultPath = `/Users/${username}/Sync/thunderbird-tags.json`;
-  } else {
-    defaultPath = `C:\\Users\\${username}\\Sync\\thunderbird-tags.json`;
-  }
-
-  console.log('[AutoConfig] Default tags path:', defaultPath);
-  return defaultPath;
-}
 
 /**
  * Initialize the sync engine with configured backend
@@ -296,17 +218,6 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
       }
 
-      else if (request.action === 'reloadSettings') {
-        await initializeSyncEngine();
-        const s = await browser.storage.local.get('syncEnabled');
-        if (s.syncEnabled) {
-          await startSyncScheduler();
-        } else {
-          stopSyncScheduler();
-        }
-        sendResponse({ success: true });
-      }
-
       else if (request.action === 'testPath') {
         const testBackend = new FilesystemBackend({ filePath: request.path });
         const connected = await testBackend.testConnection();
@@ -347,15 +258,29 @@ async function performSync() {
     // Perform actual sync
     const result = await syncEngine.sync();
 
-    // Update last sync time and result
-    await browser.storage.local.set({
-      lastSync: Date.now(),
-      lastSyncResult: result
-    });
+    // Always store the result; only update lastSync on success so the
+    // popup's "Last Sync" reflects the last SUCCESSFUL sync.
+    const update = { lastSyncResult: result };
+    if (result.status === 'success') {
+      update.lastSync = Date.now();
+    }
+    await browser.storage.local.set(update);
 
     return result;
   } catch (error) {
     console.error('[Background] Sync failed:', error.message);
+
+    // Persist the failure so the popup does not keep showing a stale success
+    await browser.storage.local.set({
+      lastSyncResult: {
+        status: 'error',
+        imported: 0,
+        exported: 0,
+        deleted: 0,
+        errors: [error.message]
+      }
+    });
+
     throw error;
   }
 }
@@ -493,6 +418,10 @@ browser.storage.onChanged.addListener(async (changes, areaName) => {
 // Initialize on load
 console.log("Background script loaded");
 (async () => {
+  if (typeof errorHandler !== 'undefined') {
+    await errorHandler.init();
+  }
+
   await initializeSyncEngine();
 
   // Start scheduler if enabled

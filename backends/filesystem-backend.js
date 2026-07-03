@@ -1,7 +1,7 @@
 /**
  * Filesystem Backend Adapter
  * Works with local filesystem paths (for SMB, Syncthing, NFS mounts, etc.)
- * Uses modern Thunderbird 128+ IOUtils API instead of deprecated nsIFile
+ * Uses the fileIO experiment API (IOUtils, Thunderbird 128+)
  */
 
 class FilesystemBackend {
@@ -21,22 +21,16 @@ class FilesystemBackend {
     try {
       console.log(`[Filesystem] Testing connection for path: ${this.filePath}`);
 
-      // Check if fileIO experiment API is available
       if (typeof browser === 'undefined' || typeof browser.fileIO === 'undefined') {
         console.warn('[Filesystem] fileIO experiment API not available - filesystem backend cannot be used');
-        console.warn('[Filesystem] Please ensure Thunderbird has experimental APIs enabled and ExtensionCommon is available');
         return false;
       }
 
-      console.log(`[Filesystem] fileIO API available, testing path`);
-
-      // Check if file path is valid (not empty)
       if (!this.filePath || typeof this.filePath !== 'string') {
         console.error('[Filesystem] Invalid file path');
         return false;
       }
 
-      // Extract parent directory from path
       const lastSlash = Math.max(
         this.filePath.lastIndexOf('/'),
         this.filePath.lastIndexOf('\\')
@@ -47,31 +41,12 @@ class FilesystemBackend {
         return false;
       }
 
-      const parentPath = this.filePath.substring(0, lastSlash);
-      console.log(`[Filesystem] Parent path: ${parentPath}`);
-
-      if (!parentPath || parentPath.length === 0) {
-        console.error(`[Filesystem] Invalid parent path`);
-        return false;
-      }
-
-      const parentExists = await browser.fileIO.exists(parentPath);
-      console.log(`[Filesystem] Parent directory exists: ${parentExists}`);
-
-      if (!parentExists) {
-        // Try to create parent directory
-        console.log(`[Filesystem] Parent directory does not exist, will create on first sync: ${parentPath}`);
-      }
-
-      // If file doesn't exist, that's okay - we'll create it on first sync
+      // File not existing yet is fine - it will be created on first sync.
+      // If it exists, verify we can actually read it.
       const fileExists = await browser.fileIO.exists(this.filePath);
       if (fileExists) {
-        console.log(`[Filesystem] Tags file exists: ${this.filePath}`);
-
-        // Try to read to ensure we have permissions
         try {
           await browser.fileIO.readUTF8(this.filePath);
-          console.log(`[Filesystem] Successfully read file (permissions OK)`);
         } catch (error) {
           console.error(`[Filesystem] Cannot read file (permission denied?): ${error.message}`);
           return false;
@@ -89,7 +64,6 @@ class FilesystemBackend {
 
   async readTags() {
     try {
-      // Check if file exists
       const fileExists = await browser.fileIO.exists(this.filePath);
 
       if (!fileExists) {
@@ -97,7 +71,6 @@ class FilesystemBackend {
         return { tags: [] };
       }
 
-      // Read file content as UTF-8
       const content = await browser.fileIO.readUTF8(this.filePath);
       const tagsData = JSON.parse(content);
 
@@ -111,70 +84,15 @@ class FilesystemBackend {
 
   async writeTags(tagsData) {
     try {
-      // Convert to JSON string
       const content = JSON.stringify(tagsData, null, 2);
 
-      // Get parent directory
-      const lastSlash = Math.max(
-        this.filePath.lastIndexOf('/'),
-        this.filePath.lastIndexOf('\\')
-      );
-      const parentPath = this.filePath.substring(0, lastSlash);
-
-      // Check if parent directory exists
-      const parentExists = await browser.fileIO.exists(parentPath);
-      if (!parentExists) {
-        console.log(`[Filesystem] Parent directory does not exist: ${parentPath}`);
-
-        // Try to create directories recursively
-        try {
-          await this.createDirectoriesRecursive(parentPath);
-          console.log(`[Filesystem] Parent directories created successfully`);
-        } catch (dirError) {
-          console.warn(`[Filesystem] Directory creation failed: ${dirError.message}`);
-          console.warn(`[Filesystem] Attempting to write file anyway...`);
-        }
-      }
-
-      // Write to file (creates if doesn't exist)
+      // fileIO.writeUTF8 creates parent directories and writes atomically
       await browser.fileIO.writeUTF8(this.filePath, content);
 
       console.log(`[Filesystem] Wrote ${tagsData.tags?.length || 0} tags to ${this.filePath}`);
     } catch (error) {
       console.error(`[Filesystem] Failed to write tags: ${error.message}`);
       throw error;
-    }
-  }
-
-  /**
-   * Create directories recursively
-   */
-  async createDirectoriesRecursive(dirPath) {
-    const parts = dirPath.split('/').filter(p => p.length > 0);
-    let currentPath = '';
-
-    for (const part of parts) {
-      currentPath += '/' + part;
-
-      try {
-        const exists = await browser.fileIO.exists(currentPath);
-        if (!exists) {
-          console.log(`[Filesystem] Creating directory: ${currentPath}`);
-
-          // Try different APIs
-          if (typeof IOUtils !== 'undefined' && IOUtils.makeDirectory) {
-            await IOUtils.makeDirectory(currentPath, { ignoreExisting: true });
-          } else if (typeof browser.fileIO !== 'undefined' && browser.fileIO.makeDirectory) {
-            await browser.fileIO.makeDirectory(currentPath, { ignoreExisting: true });
-          } else {
-            console.warn(`[Filesystem] No directory creation API available for: ${currentPath}`);
-            throw new Error(`Cannot create directory: ${currentPath}`);
-          }
-        }
-      } catch (error) {
-        console.error(`[Filesystem] Failed to create directory ${currentPath}: ${error.message}`);
-        throw error;
-      }
     }
   }
 
@@ -186,7 +104,6 @@ class FilesystemBackend {
         return 0;
       }
 
-      // Get file info
       const info = await browser.fileIO.stat(this.filePath);
       return info.lastModified;
     } catch (error) {

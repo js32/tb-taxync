@@ -46,17 +46,16 @@ class SyncEngine {
       }
 
       // Step 2: Read from backend (remote state)
+      // A corrupt or unreadable remote file must ABORT the sync: treating it
+      // as empty would make the three-way merge interpret every base tag as
+      // "deleted remotely" and wipe the local tags.
       let remoteTagsData;
       try {
         remoteTagsData = await this.backend.readTags();
       } catch (error) {
-        if (typeof errorHandler !== 'undefined') {
-          errorHandler.warn('SyncEngine', `Backend read failed, treating as empty: ${error.message}`, error);
-        } else {
-          console.warn('[SyncEngine] Backend read failed:', error.message);
-        }
-        remoteTagsData = { tags: [] };
+        throw new Error(`Backend read failed, aborting sync: ${error.message}`);
       }
+      this._validateRemoteData(remoteTagsData);
 
       // Step 3: Get last synced state from storage
       const storage = await browser.storage.local.get('lastSyncedTags');
@@ -70,6 +69,7 @@ class SyncEngine {
       );
 
       // Step 5: Apply local changes (import new/updated tags)
+      const failedImportIds = new Set();
       if (mergeResult.tagsToImport.length > 0) {
         try {
           const importResult = await this.tagManager.importTags({
@@ -77,6 +77,7 @@ class SyncEngine {
           });
           result.imported = importResult.imported;
           if (importResult.errors.length > 0) {
+            importResult.errors.forEach(e => failedImportIds.add(e.tagId));
             result.errors.push(...importResult.errors.map(e => `Import error: ${e.tagId} - ${e.error}`));
           }
         } catch (error) {
@@ -85,12 +86,14 @@ class SyncEngine {
       }
 
       // Step 6: Delete tags that were deleted remotely
+      const failedDeleteIds = new Set();
       if (mergeResult.tagsToDeleteLocally.length > 0) {
         for (const tagId of mergeResult.tagsToDeleteLocally) {
           try {
             await this.tagManager.deleteTag(tagId);
             result.deleted++;
           } catch (error) {
+            failedDeleteIds.add(tagId);
             result.errors.push(`Failed to delete tag ${tagId}: ${error.message}`);
           }
         }
@@ -123,10 +126,23 @@ class SyncEngine {
         }
       }
 
-      // Step 8: Save the new synchronized state as the snapshot
+      // Step 8: Save the new synchronized state as the snapshot.
+      // Tags whose local import failed are excluded (so they are re-imported
+      // next sync); tags whose local deletion failed keep their base entry
+      // (so the deletion is retried next sync).
+      let snapshotTags = tagsToExport.filter(t => !failedImportIds.has(t.id));
+      if (failedDeleteIds.size > 0) {
+        const baseTagsById = new Map(
+          (lastSyncedState?.tags || []).map(t => [t.id, t])
+        );
+        for (const tagId of failedDeleteIds) {
+          const baseTag = baseTagsById.get(tagId);
+          if (baseTag) snapshotTags.push(baseTag);
+        }
+      }
       await browser.storage.local.set({
         lastSyncedTags: {
-          tags: tagsToExport,
+          tags: snapshotTags,
           timestamp: Date.now()
         }
       });
@@ -170,6 +186,35 @@ class SyncEngine {
   }
 
   /**
+   * Validate the structure of data read from the backend.
+   * The file is written by other devices (and synced by third-party tools),
+   * so nothing about its content can be trusted. Any malformed entry aborts
+   * the sync - silently skipping entries would be interpreted as deletions.
+   *
+   * @param {Object} data - Parsed backend data
+   * @throws {Error} If the structure or any tag entry is invalid
+   * @private
+   */
+  _validateRemoteData(data) {
+    if (!data || typeof data !== 'object' || !Array.isArray(data.tags)) {
+      throw new Error('Remote tags file has invalid structure (missing tags array)');
+    }
+
+    for (const tag of data.tags) {
+      if (!tag || typeof tag.id !== 'string' || tag.id.length === 0 ||
+          typeof tag.name !== 'string' || tag.name.length === 0) {
+        throw new Error(`Remote tags file contains an invalid tag entry: ${JSON.stringify(tag)}`);
+      }
+      if (tag.color !== undefined && !/^#[0-9a-fA-F]{6}$/.test(tag.color)) {
+        throw new Error(`Remote tag "${tag.id}" has invalid color: ${tag.color}`);
+      }
+      if (tag.modified !== undefined && typeof tag.modified !== 'number') {
+        throw new Error(`Remote tag "${tag.id}" has invalid modified timestamp`);
+      }
+    }
+  }
+
+  /**
    * Compare two tag sets for equality (order-independent).
    * Used to decide whether a backend write is actually necessary.
    *
@@ -181,7 +226,7 @@ class SyncEngine {
   _tagSetsEqual(a = [], b = []) {
     if (a.length !== b.length) return false;
     const norm = (tags) => tags
-      .map(t => `${t.id} ${t.name} ${t.color}`)
+      .map(t => `${t.id} ${t.name} ${(t.color || '').toLowerCase()}`)
       .sort();
     const na = norm(a);
     const nb = norm(b);
@@ -349,7 +394,9 @@ class SyncEngine {
    * @private
    */
   _tagsAreDifferent(tag1, tag2) {
-    return tag1.name !== tag2.name || tag1.color !== tag2.color;
+    // Colors are compared case-insensitively (#FF0000 == #ff0000)
+    return tag1.name !== tag2.name ||
+      (tag1.color || '').toLowerCase() !== (tag2.color || '').toLowerCase();
     // Note: Don't compare modified timestamp here, as it's used for conflict resolution
   }
 

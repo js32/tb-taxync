@@ -14,16 +14,36 @@ class ErrorHandler {
       ERROR: 3
     };
     this.currentLogLevel = this.logLevels.INFO;
+    this._persistTimer = null;
   }
 
   /**
-   * Initialize error handler with config
+   * Initialize error handler with config and restore persisted history.
+   * The MV3 event page gets terminated regularly - without persistence the
+   * log history would be lost on every restart.
    */
   async init() {
-    const storage = await browser.storage.local.get('extensionConfig');
+    const storage = await browser.storage.local.get(['extensionConfig', 'logHistory']);
     const config = storage.extensionConfig || {};
-    this.currentLogLevel = this.logLevels[config.logLevel] || this.logLevels.INFO;
+    this.currentLogLevel = this.logLevels[config.logLevel] ?? this.logLevels.INFO;
+
+    if (Array.isArray(storage.logHistory)) {
+      this.errorHistory = storage.logHistory;
+    }
+
     console.log('[ErrorHandler] Initialized with log level:', Object.keys(this.logLevels).find(k => this.logLevels[k] === this.currentLogLevel));
+  }
+
+  /**
+   * Persist history to storage (debounced to avoid a write per log line)
+   * @private
+   */
+  _persist() {
+    if (this._persistTimer !== null) return;
+    this._persistTimer = setTimeout(() => {
+      this._persistTimer = null;
+      browser.storage.local.set({ logHistory: this.errorHistory }).catch(() => {});
+    }, 1000);
   }
 
   /**
@@ -50,6 +70,8 @@ class ErrorHandler {
     if (this.errorHistory.length > this.maxHistorySize) {
       this.errorHistory.shift();
     }
+
+    this._persist();
   }
 
   /**
@@ -151,6 +173,7 @@ class ErrorHandler {
    */
   clearHistory() {
     this.errorHistory = [];
+    browser.storage.local.set({ logHistory: [] }).catch(() => {});
     this.info('ErrorHandler', 'History cleared');
   }
 

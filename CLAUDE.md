@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Version & Compatibility
 
-- **Current Version:** 2.1.6
+- **Current Version:** 2.2.0
 - **Manifest Version:** 3 (modern Thunderbird 128+)
 - **Min Thunderbird:** 128.0 ESR
 - **APIs Used:** IOUtils, PathUtils, messages.tags.delete() (Thunderbird 115+ APIs)
@@ -26,7 +26,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 zip -r TB-TaXync.xpi \
   manifest.json background.js popup.html popup.js \
-  settings.html settings.js logs.html logs.js \
+  settings.html settings.js \
   backends/*.js sync/*.js icons/*.png experiments/**/*
 ```
 
@@ -127,7 +127,8 @@ JSON structure synced between backends:
 - `backendConfig`: { type: 'filesystem|dropbox|...', filePath?: string }
 - `tagDefinitions`: Map of tag definitions synced from remote
 - `lastSyncedTags`: { tags: [...], timestamp: number } - snapshot for three-way merge
-- `tagModificationTimes`: { tagId: timestamp } - preserves tag modification times
+- `tagModificationTimes`: { tagId: { name, color, modified } } - tag signatures for change detection (v2.2.0+; legacy bare-timestamp values are migrated on read)
+- `logHistory`: [...] - persisted error handler history (survives MV3 event page restarts)
 
 ### Sync Algorithm Details
 
@@ -205,7 +206,7 @@ When users upgrade from earlier versions:
 6. Check logs for conflict resolution message
 
 ### Viewing Logs
-1. Click "📋 Logs" button in popup
+1. Open Settings → "📋 Logs" tab
 2. Filter by log level (DEBUG, INFO, WARN, ERROR)
 3. View detailed error information with stack traces
 4. Download logs as JSON for debugging
@@ -220,6 +221,6 @@ When users upgrade from earlier versions:
 
 ## Thunderbird Version Compatibility
 
-Minimum version: 78.0 (manifest.json line 11)
+Minimum version: 128.0 (manifest.json `strict_min_version`)
 - Use [Thunderbird WebExtension API docs](https://webextension-api.thunderbird.net/) for feature availability
-- nsIFile APIs (used in filesystem backend) available since TB 78+
+- File I/O uses IOUtils via the fileIO experiment API (no nsIFile legacy code)

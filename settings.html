@@ -281,6 +281,27 @@
     #welcome-tab code {
       font-family: 'Monaco', 'Courier New', monospace;
       font-size: 12px;
+      background: #f0f0f0;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+
+    .tip-box {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #e7f3ff;
+      border-left: 4px solid #0078d4;
+      border-radius: 4px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      #welcome-tab code {
+        background: #1f1f23;
+      }
+
+      .tip-box {
+        background-color: #1c3a5e;
+      }
     }
 
     /* Toast Notification */
@@ -335,6 +356,101 @@
       color: #721c24;
       border: 1px solid #f5c6cb;
     }
+
+    .toast-notification.info {
+      background-color: #e7f3ff;
+      color: #084c8d;
+      border: 1px solid #b6dcfe;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      body {
+        background-color: #2a2a2e;
+        color: #f9f9fa;
+      }
+
+      .section,
+      .stat-box {
+        background-color: #38383d;
+        border-color: #4a4a4f;
+      }
+
+      input[type="text"],
+      input[type="number"] {
+        background-color: #2a2a2e;
+        border-color: #4a4a4f;
+        color: #f9f9fa;
+      }
+
+      .hint,
+      .stat-label,
+      .empty-state {
+        color: #b1b1b3;
+      }
+
+      .tabs {
+        border-bottom-color: #4a4a4f;
+      }
+
+      .tab-button {
+        color: #b1b1b3;
+      }
+
+      .tab-button.active {
+        color: #45a1ff;
+        border-bottom-color: #45a1ff;
+      }
+
+      #welcome-tab p,
+      #welcome-tab ol,
+      #welcome-tab ul {
+        color: #f9f9fa;
+      }
+
+      #welcome-tab h3 {
+        color: #45a1ff;
+      }
+
+      .detected-paths {
+        background-color: #1c3a5e;
+      }
+
+      .path-option {
+        background-color: #38383d;
+        border-color: #4a4a4f;
+      }
+
+      .path-option:hover {
+        background-color: #4a4a4f;
+      }
+
+      .log-container {
+        background-color: #1f1f23;
+        border-color: #4a4a4f;
+      }
+
+      .log-entry {
+        background-color: #2a2a2e;
+      }
+
+      .toast-notification.success {
+        background-color: #1d3b29;
+        color: #87d7a3;
+        border-color: #2e5d41;
+      }
+
+      .toast-notification.error {
+        background-color: #4a2327;
+        color: #f4a8ae;
+        border-color: #6e3439;
+      }
+
+      .toast-notification.info {
+        background-color: #1c3a5e;
+        color: #a8d1ff;
+        border-color: #2a5488;
+      }
+    }
   </style>
 </head>
 <body>
@@ -384,13 +500,13 @@
 
       <h3 style="margin-top: 20px;">Getting Started</h3>
       <ol style="line-height: 1.8; margin-left: 20px;">
-        <li>Choose a storage location for the sync file (e.g. <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px;">~/Sync/thunderbird-tags.json</code> or <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px;">/mnt/syncthing/thunderbird-tags.json</code>)</li>
+        <li>Choose a storage location for the sync file (e.g. <code>~/Sync/thunderbird-tags.json</code> or <code>/mnt/syncthing/thunderbird-tags.json</code>)</li>
         <li>Configure a sync tool (Syncthing, Dropbox, SMB, etc.)</li>
         <li>Set the path in settings</li>
         <li>Start the first synchronization</li>
       </ol>
 
-      <p style="margin-top: 20px; padding: 15px; background-color: #e7f3ff; border-left: 4px solid #0078d4; border-radius: 4px;">
+      <p class="tip-box">
         <strong>💡 Tip:</strong> Under the "Settings" tab you'll find all options for configuring
         synchronization. In the "Logs" tab you can check errors and status.
       </p>
@@ -415,7 +531,6 @@
     </div>
 
     <button id="detectSyncthingBtn" class="secondary">Detect Syncthing Folders</button>
-    <button id="browseBtn" class="secondary">Browse...</button>
   </div>
 
   <div class="section">
@@ -426,25 +541,11 @@
         <input type="checkbox" id="autoSync">
         Enable automatic synchronization
       </label>
-
-      <label class="checkbox-label">
-        <input type="checkbox" id="syncOnChange" checked>
-        Synchronize on changes
-      </label>
-
-      <label class="checkbox-label">
-        <input type="checkbox" id="manualSync">
-        Show manual sync button
-      </label>
     </div>
-  </div>
-
-  <div class="section">
-    <h2>Synchronization Interval</h2>
 
     <div class="form-group">
       <label for="syncInterval">Automatically synchronize every (minutes):</label>
-      <input type="number" id="syncInterval" min="1" max="1440" value="5" placeholder="5">
+      <input type="number" id="syncInterval" min="0" max="1440" value="60" placeholder="60">
       <div class="hint">Time in minutes between automatic syncs. 0 = disabled.</div>
     </div>
   </div>
