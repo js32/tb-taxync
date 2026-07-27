@@ -415,18 +415,36 @@ browser.storage.onChanged.addListener(async (changes, areaName) => {
   }
 });
 
-// Initialize on load
-console.log("Background script loaded");
-(async () => {
+/**
+ * Shared init routine: set up the backend and, if enabled, the sync scheduler.
+ * Runs at most once even though both the top-level script load and
+ * runtime.onStartup can each trigger it on a genuine Thunderbird startup —
+ * onStartup is kept as a safety net in case the plain top-level call isn't
+ * enough to wake a suspended event page in some startup paths, but firing
+ * both must not double-run the sync cycle.
+ */
+let initialized = false;
+async function initializeOnLoad() {
+  if (initialized) return;
+  initialized = true;
+
   if (typeof errorHandler !== 'undefined') {
     await errorHandler.init();
   }
 
   await initializeSyncEngine();
 
-  // Start scheduler if enabled
   const storage = await browser.storage.local.get('syncEnabled');
   if (storage.syncEnabled) {
     await startSyncScheduler();
   }
-})();
+}
+
+browser.runtime.onStartup.addListener(() => {
+  console.log('[Background] Thunderbird started, initializing sync');
+  initializeOnLoad();
+});
+
+// Initialize on load
+console.log("Background script loaded");
+initializeOnLoad();

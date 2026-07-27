@@ -4,6 +4,12 @@ Alle nennenswerten Änderungen an diesem Projekt werden in dieser Datei dokument
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/) und dieses Projekt folgt [Semantic Versioning](https://semver.org/).
 
+## [2.2.1] - 2026-07-27
+
+### 🐛 Bugfixes
+
+- **Auto-Sync startete nicht beim Thunderbird-Start**: Der Sync lief erst, nachdem Einstellungen oder Popup geöffnet wurden. Ein `runtime.onStartup`-Listener stellt jetzt sicher, dass die Event-Page beim Programmstart zuverlässig initialisiert wird (mit Schutz gegen doppelte Initialisierung, falls Start-Skript und `onStartup` beide auslösen).
+
 ## [2.2.0] - 2026-07-03
 
 ### 🐛 Kritische Bugfixes
