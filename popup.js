@@ -57,17 +57,30 @@ async function updateStatus() {
     }
 
     if (storage.lastSyncResult?.status === 'success') {
-      statusContainer.className = 'status success';
-      syncStatus.textContent = '✓ Success';
+      const result = storage.lastSyncResult;
+      const hasTagErrors = result.errors?.length > 0;
+
+      // A sync can report "success" (it ran to completion and wrote the
+      // backend file) while still failing to apply individual tags - e.g.
+      // a tag that already exists locally under a different key. Surface
+      // that instead of silently showing a plain checkmark.
+      statusContainer.className = hasTagErrors ? 'status warning' : 'status success';
+      syncStatus.textContent = hasTagErrors ? '⚠ Success with errors' : '✓ Success';
 
       // Show sync details (imported, exported, deleted)
-      const result = storage.lastSyncResult;
       const details = [];
       if (result.imported > 0) details.push(`${result.imported} imported`);
       if (result.exported > 0) details.push(`${result.exported} exported`);
       if (result.deleted > 0) details.push(`${result.deleted} deleted`);
 
-      syncDetails.textContent = details.length > 0 ? details.join(', ') : 'No changes';
+      let detailsText = details.length > 0 ? details.join(', ') : 'No changes';
+      if (hasTagErrors) {
+        const suffix = result.errors.length === 1
+          ? result.errors[0]
+          : `${result.errors.length} tags failed - see Settings → Logs for details`;
+        detailsText += ` (${suffix})`;
+      }
+      syncDetails.textContent = detailsText;
     } else if (storage.lastSyncResult?.status === 'error') {
       statusContainer.className = 'status error';
       syncStatus.textContent = '✗ Error';

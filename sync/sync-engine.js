@@ -79,6 +79,11 @@ class SyncEngine {
           if (importResult.errors.length > 0) {
             importResult.errors.forEach(e => failedImportIds.add(e.tagId));
             result.errors.push(...importResult.errors.map(e => `Import error: ${e.tagId} - ${e.error}`));
+            if (typeof errorHandler !== 'undefined') {
+              importResult.errors.forEach(e => {
+                errorHandler.warn('SyncEngine', `Tag "${e.tagId}" was not imported: ${e.error}`);
+              });
+            }
           }
         } catch (error) {
           throw new Error(`Failed to import tags: ${error.message}`);
@@ -95,6 +100,9 @@ class SyncEngine {
           } catch (error) {
             failedDeleteIds.add(tagId);
             result.errors.push(`Failed to delete tag ${tagId}: ${error.message}`);
+            if (typeof errorHandler !== 'undefined') {
+              errorHandler.warn('SyncEngine', `Tag "${tagId}" could not be deleted: ${error.message}`);
+            }
           }
         }
       }
@@ -161,6 +169,9 @@ class SyncEngine {
 
       if (typeof errorHandler !== 'undefined') {
         errorHandler.info('SyncEngine', `Sync complete in ${result.duration}ms - Imported: ${result.imported}, Exported: ${result.exported}, Deleted: ${result.deleted}`);
+        if (result.errors.length > 0) {
+          errorHandler.warn('SyncEngine', `Sync finished with ${result.errors.length} tag-level error(s) - some tags were not applied. See details above.`);
+        }
       } else {
         console.log('[SyncEngine] Sync complete:', result);
       }

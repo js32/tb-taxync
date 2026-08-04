@@ -4,6 +4,13 @@ Alle nennenswerten Änderungen an diesem Projekt werden in dieser Datei dokument
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/) und dieses Projekt folgt [Semantic Versioning](https://semver.org/).
 
+## [2.2.2] - 2026-08-04
+
+### 🐛 Bugfixes
+
+- **Initialer Import ignorierte abweichende Remote-Tags bei bereits vorhandenen lokalen Tags**: Beim allerersten Sync bekam jeder lokal bereits existierende Tag (Standard-Tags wie auch selbst angelegte) ohne gespeicherte Signatur den Zeitstempel `Date.now()` ("gerade eben geändert") zugewiesen. Im Drei-Way-Merge gewann dadurch beim Add-Add-Fall fast immer die lokale Version gegen den echten (älteren) Remote-Zeitstempel, ohne Fehlermeldung. Betroffene Tags wurden so nie übernommen. Neu erfasste, ungetrackte lokale Tags bekommen jetzt `modified: 0` (unbekannt/ältest), sodass ein echter Remote-Zeitstempel korrekt gewinnt.
+- **Fehlgeschlagene Einzel-Tag-Importe/-Löschungen wurden nicht angezeigt**: Wenn beim Sync einzelne Tags nicht angewendet werden konnten, meldete das Popup trotzdem uneingeschränkt "✓ Success" - die Fehler landeten nur in `result.errors`, ohne sichtbar oder im persistierten Log zu erscheinen. Solche Fehler werden jetzt per `errorHandler.warn()` geloggt (sichtbar unter Einstellungen → Logs) und das Popup zeigt bei einem ansonsten erfolgreichen Sync mit Tag-Fehlern jetzt "⚠ Success with errors" statt eines irreführenden Häkchens.
+
 ## [2.2.1] - 2026-07-27
 
 ### 🐛 Bugfixes

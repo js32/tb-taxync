@@ -68,8 +68,15 @@ class TagManager {
       }
 
       if (!entry) {
-        // New tag - first time we see it
-        entry = { name, color, modified: now };
+        // New tag - first time we see it. We don't know when it was
+        // actually last changed, so we must NOT stamp it with "now": that
+        // would make it always outrank a real remote timestamp in an
+        // add-add merge (e.g. the very first sync on a profile that
+        // already has pre-existing tags), silently blocking the import of
+        // a differing remote value. Use 0 (unknown/oldest) instead - it
+        // will be bumped to a real timestamp the moment it's genuinely
+        // edited locally.
+        entry = { name, color, modified: 0 };
         signatures[tagId] = entry;
         dirty = true;
       } else if (entry.name !== name || entry.color !== color) {
