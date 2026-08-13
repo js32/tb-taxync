@@ -4,6 +4,12 @@ Alle nennenswerten Änderungen an diesem Projekt werden in dieser Datei dokument
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/) und dieses Projekt folgt [Semantic Versioning](https://semver.org/).
 
+## [2.2.3] - 2026-08-13
+
+### ✨ Neu
+
+- **Rotierende Backups der Sync-Datei**: Vor jedem tatsächlichen Schreiben auf das Backend wird die bisherige Version der Tags-Datei in einen Unterordner `.tb-taxync-backups` neben der eigentlichen Datei kopiert (Zeitstempel im Dateinamen). Die letzten 30 Generationen werden aufgehoben, ältere automatisch gelöscht. Schützt davor, dass ein fehlerhafter Merge Tags unwiederbringlich löscht, falls es erst nach mehreren Syncs auffällt. Ein fehlgeschlagenes Backup blockiert den eigentlichen Sync nicht, wird aber als Warnung geloggt. Wiederherstellung ist aktuell manuell (Datei aus dem Backup-Ordner zurückkopieren).
+
 ## [2.2.2] - 2026-08-04
 
 ### 🐛 Bugfixes

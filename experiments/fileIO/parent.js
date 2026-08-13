@@ -147,6 +147,40 @@ var fileIO = class extends (ExtensionCommon?.ExtensionAPI || class {}) {
             console.error('[fileIO] stat error:', error.message);
             throw error;
           }
+        },
+
+        /**
+         * List the full paths of a directory's direct children.
+         * Returns an empty array if the directory does not exist.
+         */
+        async listDir(path) {
+          try {
+            assertValidPath(path);
+            await ensureIOUtils();
+
+            const exists = await IOUtils.exists(path);
+            if (!exists) return [];
+
+            return await IOUtils.getChildren(path);
+          } catch (error) {
+            console.error('[fileIO] listDir error:', error.message);
+            return [];
+          }
+        },
+
+        /**
+         * Delete a file. Missing files are treated as already-deleted.
+         */
+        async remove(path) {
+          try {
+            assertValidPath(path);
+            await ensureIOUtils();
+
+            await IOUtils.remove(path, { ignoreAbsent: true });
+          } catch (error) {
+            console.error('[fileIO] remove error:', error.message);
+            throw error;
+          }
         }
       }
     };

@@ -58,6 +58,32 @@
             "description": "Absolute path to file"
           }
         ]
+      },
+      {
+        "name": "listDir",
+        "type": "function",
+        "description": "List the full paths of a directory's direct children (empty array if the directory does not exist)",
+        "async": true,
+        "parameters": [
+          {
+            "name": "path",
+            "type": "string",
+            "description": "Absolute path to directory"
+          }
+        ]
+      },
+      {
+        "name": "remove",
+        "type": "function",
+        "description": "Delete a file (missing files are treated as already-deleted)",
+        "async": true,
+        "parameters": [
+          {
+            "name": "path",
+            "type": "string",
+            "description": "Absolute path to file"
+          }
+        ]
       }
     ]
   }
