@@ -131,10 +131,7 @@ class FilesystemBackend {
   }
 
   /**
-   * Copy the current backend file into the rotating backup folder, then
-   * prune old generations beyond MAX_BACKUPS. Filenames use a
-   * colon-free ISO timestamp so lexical sort order equals chronological
-   * order (needed for rotation).
+   * Snapshot the current backend file into the rotating backup folder.
    * @private
    */
   async _backupBeforeWrite() {
@@ -143,19 +140,51 @@ class FilesystemBackend {
       if (!exists) return; // Nothing to back up on the very first write
 
       const content = await browser.fileIO.readUTF8(this.filePath);
-      const { base } = this._splitPath();
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const backupPath = `${this._backupDir()}${this._pathSep()}${base}.${timestamp}.bak`;
-
-      await browser.fileIO.writeUTF8(backupPath, content);
-      await this._rotateBackups();
+      await this._writeBackupFile('pre-write', content);
     } catch (error) {
-      const message = `Backup before write failed (continuing without backup): ${error.message}`;
-      if (typeof errorHandler !== 'undefined') {
-        errorHandler.warn('Filesystem', message);
-      } else {
-        console.warn(`[Filesystem] ${message}`);
-      }
+      this._logBackupFailure('Backup before write', error);
+    }
+  }
+
+  /**
+   * Write an arbitrary tag set into the rotating backup folder, independent
+   * of the main sync file. Used for extra safety snapshots at particularly
+   * risky moments (e.g. the very first sync on a profile) that aren't tied
+   * to an actual writeTags() call.
+   * @param {string} label - Short tag identifying why this snapshot was taken
+   * @param {Object} tagsData - { tags: [...] }
+   */
+  async backupSnapshot(label, tagsData) {
+    try {
+      await this._writeBackupFile(label, JSON.stringify(tagsData, null, 2));
+    } catch (error) {
+      this._logBackupFailure(`Snapshot backup "${label}"`, error);
+    }
+  }
+
+  /**
+   * Write content into the rotating backup folder and prune old
+   * generations beyond MAX_BACKUPS. Filenames use a colon-free ISO
+   * timestamp so lexical sort order equals chronological order (needed
+   * for rotation).
+   * @private
+   */
+  async _writeBackupFile(label, content) {
+    const { base } = this._splitPath();
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const backupPath = `${this._backupDir()}${this._pathSep()}${base}.${label}.${timestamp}.bak`;
+
+    await browser.fileIO.writeUTF8(backupPath, content);
+    await this._rotateBackups();
+  }
+
+  /** @private */
+  _logBackupFailure(context, error) {
+    const message = `${context} failed (continuing without backup): ${error.message}`;
+    if (typeof errorHandler !== 'undefined') {
+      errorHandler.warn('Filesystem', message);
+    } else {
+      console.warn(`[Filesystem] ${message}`);
     }
   }
 

@@ -4,6 +4,20 @@ Alle nennenswerten Änderungen an diesem Projekt werden in dieser Datei dokument
 
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/) und dieses Projekt folgt [Semantic Versioning](https://semver.org/).
 
+## [2.2.4] - 2026-08-14
+
+### ✨ Neu
+
+- **Zusätzlicher Backup-Snapshot beim allerersten Sync**: Wenn noch keine `lastSyncedTags`-Baseline existiert (erster Sync auf diesem Profil, historisch die fehleranfälligste Situation), wird der aktuelle lokale Tag-Zustand vor dem Merge zusätzlich in `.tb-taxync-backups` gesichert – unabhängig vom regulären Backup vor dem Schreiben.
+
+### 🐛 Bugfixes
+
+- **"SMB-Freigabe" im Settings-Overview war deutscher Text in einer sonst englischen UI** – korrigiert zu "SMB Share".
+
+### 📝 Sonstiges
+
+- Hinweis zu den rotierenden Backups im Settings-Overview-Tab ergänzt (Speicherort, Anzahl der Generationen, manuelle Wiederherstellung).
+
 ## [2.2.3] - 2026-08-13
 
 ### ✨ Neu

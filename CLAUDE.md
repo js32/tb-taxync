@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Version & Compatibility
 
-- **Current Version:** 2.2.3
+- **Current Version:** 2.2.4
 - **Manifest Version:** 3 (modern Thunderbird 128+)
 - **Min Thunderbird:** 128.0 ESR
 - **APIs Used:** IOUtils, PathUtils, messages.tags.delete() (Thunderbird 115+ APIs)

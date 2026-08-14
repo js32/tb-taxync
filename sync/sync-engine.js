@@ -61,6 +61,15 @@ class SyncEngine {
       const storage = await browser.storage.local.get('lastSyncedTags');
       const lastSyncedState = storage.lastSyncedTags || null;
 
+      // No baseline yet means every local tag is treated as newly
+      // discovered by the merge below - historically the riskiest sync
+      // (see v2.2.0/v2.2.2 fixes for bugs specific to this case). Snapshot
+      // local tags now, independent of the regular pre-write backup, so
+      // there's always a way back even if this particular merge goes wrong.
+      if (!lastSyncedState && typeof this.backend.backupSnapshot === 'function') {
+        await this.backend.backupSnapshot('initial-local-tags', { tags: localTags });
+      }
+
       // Step 4: Three-way merge
       const mergeResult = this._threeWayMerge(
         localTags,

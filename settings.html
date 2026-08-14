@@ -493,10 +493,18 @@
       <ul style="line-height: 1.8; margin-left: 20px;">
         <li><strong>⭐ Syncthing (recommended)</strong> - Decentralized, secure and private file sync between devices. No central servers required. <em style="color: #0078d4;">This is the recommended solution!</em></li>
         <li><strong>Dropbox / Google Drive / OneDrive</strong> - Cloud storage</li>
-        <li><strong>SMB-Freigabe</strong> - Network shares (NAS, Windows shares)</li>
+        <li><strong>SMB Share</strong> - Network shares (NAS, Windows shares)</li>
         <li><strong>NFS</strong> - Network file system (Linux)</li>
         <li><strong>SSH/SFTP</strong> - Remote server access</li>
       </ul>
+
+      <h3 style="margin-top: 20px;">Backups</h3>
+      <p style="line-height: 1.6; margin-bottom: 15px;">
+        Before every write, TB-TaXync automatically saves the previous version of your
+        sync file into a <code>.tb-taxync-backups</code> folder right next to it (the
+        last 30 versions are kept, older ones are pruned automatically). If a sync
+        ever goes wrong, you can restore an older version from there manually.
+      </p>
 
       <h3 style="margin-top: 20px;">Getting Started</h3>
       <ol style="line-height: 1.8; margin-left: 20px;">
