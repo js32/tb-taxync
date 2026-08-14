@@ -1,6 +1,8 @@
 // TB Labels Sync - Settings Script
 
 document.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('versionTag').textContent = `v${browser.runtime.getManifest().version}`;
+
   await loadSettings();
   setupTabs();
   setupLogHandlers();
